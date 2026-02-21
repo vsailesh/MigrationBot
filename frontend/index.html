@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="MigrationBot — AI agent for Azure Data Factory pipeline creation and blob-to-database migration">
+    <title>MigrationBot — Azure Migration Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo-section">
+                <div class="logo-icon">🤖</div>
+                <div class="logo-text">
+                    <h1>MigrationBot</h1>
+                    <p class="tagline">Azure Data Factory Migration Agent</p>
+                </div>
+            </div>
+            <div class="connection-dots" id="connectionDots">
+                <div class="dot-item" id="dotBlob"><span class="dot"></span> Blob</div>
+                <div class="dot-item" id="dotSql"><span class="dot"></span> SQL</div>
+                <div class="dot-item" id="dotAdf"><span class="dot"></span> ADF</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-bar">
+        <div class="nav-inner">
+            <button class="nav-btn active" data-view="status">⚡ Status</button>
+            <button class="nav-btn" data-view="explorer">📂 Blob Explorer</button>
+            <button class="nav-btn" data-view="migrate">🚀 Migrate</button>
+            <button class="nav-btn" data-view="jobs">📋 Jobs <span class="job-badge" id="jobBadge">0</span></button>
+        </div>
+    </nav>
+
+    <main class="main">
+        <!-- ═══ STATUS VIEW ═══ -->
+        <div class="view active" id="statusView">
+            <div class="status-grid" id="statusGrid">
+                <div class="status-card" id="blobStatus">
+                    <div class="status-icon">☁️</div>
+                    <h3>Azure Blob Storage</h3>
+                    <div class="status-indicator loading">Checking...</div>
+                    <div class="status-detail" id="blobDetail"></div>
+                </div>
+                <div class="status-card" id="sqlStatus">
+                    <div class="status-icon">🗄️</div>
+                    <h3>Azure SQL Database</h3>
+                    <div class="status-indicator loading">Checking...</div>
+                    <div class="status-detail" id="sqlDetail"></div>
+                </div>
+                <div class="status-card" id="adfStatus">
+                    <div class="status-icon">⚙️</div>
+                    <h3>Azure Data Factory</h3>
+                    <div class="status-indicator loading">Checking...</div>
+                    <div class="status-detail" id="adfDetail"></div>
+                </div>
+            </div>
+            <div class="config-hint">
+                <h3>🔧 Configuration</h3>
+                <p>Add your Azure credentials to <code>.env</code> to connect. See <code>.env.example</code> for
+                    required variables.</p>
+            </div>
+        </div>
+
+        <!-- ═══ BLOB EXPLORER VIEW ═══ -->
+        <div class="view" id="explorerView">
+            <div class="explorer-layout">
+                <div class="explorer-sidebar">
+                    <h3>📦 Containers</h3>
+                    <div class="container-list" id="containerList">
+                        <div class="loading-small">Loading...</div>
+                    </div>
+                </div>
+                <div class="explorer-main">
+                    <div class="explorer-header">
+                        <h3>📄 Files</h3>
+                        <span class="explorer-path" id="explorerPath">Select a container</span>
+                    </div>
+                    <div class="file-list" id="fileList">
+                        <div class="empty-hint">← Select a container to browse files</div>
+                    </div>
+                </div>
+                <div class="explorer-preview" id="previewPanel">
+                    <h3>🔍 Schema Preview</h3>
+                    <div class="preview-content" id="previewContent">
+                        <div class="empty-hint">Select a file to preview its schema</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ MIGRATE VIEW ═══ -->
+        <div class="view" id="migrateView">
+            <div class="migrate-wizard">
+                <h2>🚀 New Migration</h2>
+                <p class="migrate-desc">Select a blob file, review the auto-detected schema, and launch the pipeline.
+                </p>
+
+                <form id="migrateForm" class="wizard-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Container</label>
+                            <select id="migrateContainer" class="form-input" required>
+                                <option value="">Select container...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Blob File</label>
+                            <select id="migrateBlob" class="form-input" required>
+                                <option value="">Select file...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Target Table Name</label>
+                            <input id="migrateTable" class="form-input" type="text" placeholder="e.g. customers_data"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label>Schema</label>
+                            <input id="migrateSchema" class="form-input" type="text" value="dbo" placeholder="dbo">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Migration Mode</label>
+                            <div class="mode-toggle">
+                                <button type="button" class="mode-btn active" data-mode="adf" id="modeAdf">⚙️ ADF
+                                    Pipeline</button>
+                                <button type="button" class="mode-btn" data-mode="direct" id="modeDirect">⚡ Direct
+                                    Insert</button>
+                            </div>
+                            <p class="form-hint" id="modeHint">Creates a full ADF pipeline (linked services, datasets,
+                                copy activity)</p>
+                        </div>
+                    </div>
+
+                    <div class="schema-preview-box" id="migrateSchemaPreview" style="display: none;">
+                        <h4>📋 Detected Schema</h4>
+                        <div id="migrateSchemaContent"></div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="previewBtn">🔍 Preview Pipeline</button>
+                        <button type="submit" class="btn btn-primary" id="migrateBtn">🚀 Start Migration</button>
+                    </div>
+                </form>
+
+                <div class="pipeline-preview-box" id="pipelinePreview" style="display: none;">
+                    <h4>📝 Generated Pipeline Definition</h4>
+                    <pre id="pipelineJson"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ JOBS VIEW ═══ -->
+        <div class="view" id="jobsView">
+            <h2>📋 Migration Jobs</h2>
+            <div class="jobs-list" id="jobsList">
+                <div class="empty-hint">No migration jobs yet. Start one from the Migrate tab.</div>
+            </div>
+
+            <div class="job-detail-panel" id="jobDetailPanel" style="display: none;">
+                <h3>Job Details</h3>
+                <div id="jobDetailContent"></div>
+                <div class="log-viewer" id="logViewer">
+                    <h4>📜 Logs</h4>
+                    <div class="log-entries" id="logEntries"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>🤖 MigrationBot — Azure Blob → SQL Database • ADF Pipeline Automation</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

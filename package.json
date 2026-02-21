@@ -1,0 +1,22 @@
+{
+    "name": "migrationbot",
+    "version": "1.0.0",
+    "description": "AI agent for Azure Data Factory pipeline creation and blob-to-database migration",
+    "main": "server.js",
+    "type": "module",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node --watch server.js"
+    },
+    "dependencies": {
+        "@azure/arm-datafactory": "^16.0.0",
+        "@azure/identity": "^4.6.0",
+        "@azure/storage-blob": "^12.26.0",
+        "cors": "^2.8.5",
+        "csv-parse": "^5.6.0",
+        "dotenv": "^16.4.7",
+        "express": "^4.21.2",
+        "mssql": "^11.0.1",
+        "uuid": "^11.1.0"
+    }
+}
