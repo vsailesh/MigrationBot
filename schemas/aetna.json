@@ -1,0 +1,434 @@
+{
+  "project_name": "Aetna",
+  "description": "Aetna Medicare Data Schema",
+  "version": "1.1",
+  "columns": {
+    "LEGACY": {
+      "type": "string",
+      "description": "Legacy system identifier",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaContractTbl"
+    },
+    "GROUP_NBR": {
+      "type": "string",
+      "description": "Group number",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaContractTbl"
+    },
+    "CMS_CNTRCT_NBR": {
+      "type": "string",
+      "description": "CMS contract number",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaContractTbl"
+    },
+    "CMS_CNTRCT_NAME": {
+      "type": "string",
+      "description": "CMS contract name",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaContractTbl"
+    },
+    "ORIG_COVG_EFF_DT": {
+      "type": "date",
+      "description": "Original coverage effective date",
+      "required": false,
+      "targetTable": "aetnaContractTbl"
+    },
+    "MBI_NBR": {
+      "type": "string",
+      "description": "Medicare Beneficiary Identifier",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "MEMBER_ID": {
+      "type": "string",
+      "description": "Member ID",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "SRC_MEMBER_ID": {
+      "type": "string",
+      "description": "Source member ID (Primary Key)",
+      "required": true,
+      "max_length": 50,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "SRC_CUMB_ID": {
+      "type": "string",
+      "description": "Source cumulative ID",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "MEMBER-NAME": {
+      "type": "string",
+      "description": "Member name",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "MEMBER_MI": {
+      "type": "string",
+      "description": "Member middle initial",
+      "required": false,
+      "max_length": 10,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "BIRTH_DT": {
+      "type": "date",
+      "description": "Birth date",
+      "required": false,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "GENDER": {
+      "type": "string",
+      "description": "Gender",
+      "required": false,
+      "max_length": 10,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "ADDRESS_LINE_1_TXT": {
+      "type": "string",
+      "description": "Address line 1",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "ADDRESS_LINE_2_TXT": {
+      "type": "string",
+      "description": "Address line 2",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "CITY_NM": {
+      "type": "string",
+      "description": "City name",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "STATE_POSTAL_CD": {
+      "type": "string",
+      "description": "State postal code",
+      "required": false,
+      "max_length": 10,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "ZIP_CD": {
+      "type": "string",
+      "description": "ZIP code",
+      "required": false,
+      "max_length": 20,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "MEMBER_COUNTY": {
+      "type": "string",
+      "description": "Member county",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "MEM_PHONE": {
+      "type": "string",
+      "description": "Member phone",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "Phone Number": {
+      "type": "string",
+      "description": "Phone number (alternative field)",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "DNC": {
+      "type": "string",
+      "description": "Do Not Call indicator",
+      "required": false,
+      "max_length": 10,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "CUSTOMER_NBR": {
+      "type": "string",
+      "description": "Customer number",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaContractTbl"
+    },
+    "CUSTOMER_NM": {
+      "type": "string",
+      "description": "Customer name",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaContractTbl"
+    },
+    "ONSHORE_OFF": {
+      "type": "string",
+      "description": "Onshore/Offshore indicator",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaContractTbl"
+    },
+    "PBG_IND": {
+      "type": "string",
+      "description": "PBG indicator",
+      "required": false,
+      "max_length": 10,
+      "targetTable": "aetnaPbgTbl"
+    },
+    "PBG_STATUS": {
+      "type": "string",
+      "description": "PBG status",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaPbgTbl"
+    },
+    "PBG_NBR": {
+      "type": "string",
+      "description": "PBG number",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaPbgTbl"
+    },
+    "PBG_NM": {
+      "type": "string",
+      "description": "PBG name",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaPbgTbl"
+    },
+    "VBC_IND": {
+      "type": "string",
+      "description": "VBC indicator",
+      "required": false,
+      "max_length": 10,
+      "targetTable": "aetnaPbgTbl"
+    },
+    "VBC_NAME": {
+      "type": "string",
+      "description": "VBC name",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaPbgTbl"
+    },
+    "EPDB_DW_PRVDR_ID": {
+      "type": "string",
+      "description": "EPDB DW Provider ID",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "PROVIDER_ID": {
+      "type": "string",
+      "description": "Provider ID",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "PROVIDER_NAME": {
+      "type": "string",
+      "description": "Provider name",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "TIN_NAME": {
+      "type": "string",
+      "description": "TIN name",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "PROVIDER_TIN": {
+      "type": "string",
+      "description": "Provider TIN",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "PROVIDER_ADDRESS": {
+      "type": "string",
+      "description": "Provider address",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "PROVIDER_CITY": {
+      "type": "string",
+      "description": "Provider city",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "PROVIDER_STATE": {
+      "type": "string",
+      "description": "Provider state",
+      "required": false,
+      "max_length": 10,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "PROVIDER_ZIP": {
+      "type": "string",
+      "description": "Provider ZIP",
+      "required": false,
+      "max_length": 20,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "PROVIDER_COUNTY": {
+      "type": "string",
+      "description": "Provider county",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "PROVIDER_PHONE_NBR": {
+      "type": "string",
+      "description": "Provider phone number",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "PROVIDER_SPECIALTY": {
+      "type": "string",
+      "description": "Provider specialty",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "Language_cd": {
+      "type": "string",
+      "description": "Language code",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "SNP_IND": {
+      "type": "string",
+      "description": "SNP indicator",
+      "required": false,
+      "max_length": 10,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "BCS_GAP": {
+      "type": "string",
+      "description": "BCS gap indicator",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaGapsTbl"
+    },
+    "CBP_GAP": {
+      "type": "string",
+      "description": "CBP gap indicator",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaGapsTbl"
+    },
+    "COL_GAP": {
+      "type": "string",
+      "description": "COL gap indicator",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaGapsTbl"
+    },
+    "OMW_GAP": {
+      "type": "string",
+      "description": "OMW gap indicator",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaGapsTbl"
+    },
+    "OMW_FRACT_DT": {
+      "type": "date",
+      "description": "OMW fracture date",
+      "required": false,
+      "targetTable": "aetnaGapsTbl"
+    },
+    "SPC_GAP": {
+      "type": "string",
+      "description": "SPC gap indicator",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "aetnaGapsTbl"
+    },
+    "Latest_call_outcome": {
+      "type": "string",
+      "description": "Latest call outcome",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "aetnaActivityTbl"
+    },
+    "latest_call_date": {
+      "type": "date",
+      "description": "Latest call date",
+      "required": false,
+      "targetTable": "aetnaActivityTbl"
+    },
+    "insert_date": {
+      "type": "date",
+      "description": "Record insert date",
+      "required": false,
+      "targetTable": "aetnaActivityTbl"
+    }
+  },
+  "data_quality_rules": {
+    "required_fields": ["SRC_MEMBER_ID"],
+    "date_formats": ["MM/DD/YYYY", "YYYY-MM-DD", "MM-DD-YYYY"],
+    "phone_validation": true,
+    "zip_validation": true,
+    "email_validation": false
+  },
+  "transformations": {
+    "column_mappings": {},
+    "value_mappings": {},
+    "default_values": {}
+  },
+
+  "normalization": {
+    "default_output_mode": "normalized-json",
+    "tables": {
+      "members": {
+        "primary_key": "MEMBER_ID",
+        "fallback_primary_key": "SRC_MEMBER_ID",
+        "alternate_key": "MBI_NBR",
+        "foreign_keys": { "providerTin": "PROVIDER_TIN" },
+        "source_columns": [
+          "MEMBER_ID", "SRC_MEMBER_ID", "MBI_NBR", "SRC_CUMB_ID",
+          "MEMBER-NAME", "MEMBER_MI", "BIRTH_DT", "GENDER",
+          "Language_cd", "SNP_IND",
+          "ADDRESS_LINE_1_TXT", "ADDRESS_LINE_2_TXT", "CITY_NM",
+          "STATE_POSTAL_CD", "ZIP_CD", "MEMBER_COUNTY", "MEM_PHONE", "Phone Number", "DNC",
+          "LEGACY", "GROUP_NBR", "CMS_CNTRCT_NBR", "CMS_CNTRCT_NAME",
+          "ORIG_COVG_EFF_DT", "CUSTOMER_NBR", "CUSTOMER_NM", "ONSHORE_OFF",
+          "PBG_IND", "PBG_STATUS", "PBG_NBR", "PBG_NM", "VBC_IND", "VBC_NAME",
+          "Latest_call_outcome", "latest_call_date", "insert_date",
+          "PROVIDER_TIN"
+        ]
+      },
+      "providers": {
+        "primary_key": "PROVIDER_TIN",
+        "source_columns": [
+          "PROVIDER_TIN", "PROVIDER_ID", "EPDB_DW_PRVDR_ID", "PROVIDER_NAME",
+          "TIN_NAME", "PROVIDER_ADDRESS", "PROVIDER_CITY", "PROVIDER_STATE",
+          "PROVIDER_ZIP", "PROVIDER_COUNTY", "PROVIDER_PHONE_NBR", "PROVIDER_SPECIALTY"
+        ]
+      },
+      "gaps": {
+        "primary_key": "MEMBER_ID",
+        "fallback_primary_key": "SRC_MEMBER_ID",
+        "alternate_key": "MBI_NBR",
+        "foreign_keys": { "providerTin": "PROVIDER_TIN" },
+        "source_columns": [
+          "MEMBER_ID", "MBI_NBR", "PROVIDER_TIN",
+          "BCS_GAP", "CBP_GAP", "COL_GAP", "OMW_GAP", "OMW_FRACT_DT", "SPC_GAP"
+        ]
+      }
+    }
+  }
+}

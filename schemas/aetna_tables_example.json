@@ -1,0 +1,104 @@
+{
+  "_comment": "Reference schema illustrating the targetTable pattern for direct SQL-table-mapped JSON output. Each column definition now includes a 'targetTable' field that tells groupByTable() which destination table the column belongs to. Columns without a targetTable are placed in a special '_unmapped' bucket so nothing is silently dropped.",
+
+  "projectName": "Aetna",
+  "columns": {
+    "SRC_MEMBER_ID": {
+      "type": "string",
+      "required": true,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "MEMBER-NAME": {
+      "type": "string",
+      "required": false,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "BIRTH_DT": {
+      "type": "date",
+      "required": false,
+      "targetTable": "aetnaMemberTbl"
+    },
+    "ADDRESS_LINE_1_TXT": {
+      "type": "string",
+      "required": false,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "CITY_NM": {
+      "type": "string",
+      "required": false,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "STATE_POSTAL_CD": {
+      "type": "string",
+      "required": false,
+      "targetTable": "aetnaAddressTbl"
+    },
+    "PROVIDER_ID": {
+      "type": "string",
+      "required": false,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "PROVIDER_NAME": {
+      "type": "string",
+      "required": false,
+      "targetTable": "aetnaProviderTbl"
+    },
+    "BCS_GAP": {
+      "type": "string",
+      "required": false,
+      "targetTable": "aetnaGapsTbl"
+    },
+    "COL_GAP": {
+      "type": "string",
+      "required": false,
+      "targetTable": "aetnaGapsTbl"
+    },
+    "LEGACY_SYSTEM_CODE": {
+      "type": "string",
+      "required": false
+    }
+  },
+
+  "requiredFields": ["SRC_MEMBER_ID"],
+
+  "dataQualityRules": [
+    { "field": "SRC_MEMBER_ID", "rule": "non_empty" }
+  ],
+
+  "_outputExample": {
+    "_description": "When outputMode=json, groupByTable() produces this shape. Each original row is split across tables according to targetTable. Columns with no targetTable land in '_unmapped'.",
+    "aetnaMemberTbl": [
+      { "srcMemberId": "M001", "memberName": "Jane Doe", "birthDt": "1965-03-12" },
+      { "srcMemberId": "M002", "memberName": "John Smith", "birthDt": "1958-07-04" }
+    ],
+    "aetnaAddressTbl": [
+      { "addressLine1Txt": "123 Main St", "cityNm": "Baltimore", "statePostalCd": "MD" },
+      { "addressLine1Txt": "456 Oak Ave", "cityNm": "Rockville",  "statePostalCd": "MD" }
+    ],
+    "aetnaProviderTbl": [
+      { "providerId": "P100", "providerName": "Dr. Alice Chen" },
+      { "providerId": "P101", "providerName": "Dr. Bob Patel" }
+    ],
+    "aetnaGapsTbl": [
+      { "bcsGap": "Y", "colGap": "N" },
+      { "bcsGap": "N", "colGap": "Y" }
+    ],
+    "_unmapped": [
+      { "legacySystemCode": "LSC-42" },
+      { "legacySystemCode": "LSC-99" }
+    ]
+  },
+
+  "_addingNewProjects": {
+    "_description": "Steps to onboard a new project with targetTable support",
+    "steps": [
+      "1. Copy this file to schemas/{projectKey}.json",
+      "2. Define all expected columns under 'columns', assigning each a 'targetTable'",
+      "3. Group columns into logical destination tables (members, providers, clinical, etc.)",
+      "4. Columns intentionally left unmapped will appear in the '_unmapped' key of the JSON output",
+      "5. Create src/cleaners/{projectKey}_cleaning.js from TEMPLATE_cleaning.js",
+      "6. Register the new cleaner in src/routes/api.js",
+      "7. Call POST /api/cleaning/{projectKey}/process-to-json to get table-grouped JSON output"
+    ]
+  }
+}

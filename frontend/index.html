@@ -40,6 +40,8 @@
         <div class="nav-inner">
             <button class="nav-btn active" data-view="status">⚡ Status</button>
             <button class="nav-btn" data-view="explorer">📂 Blob Explorer</button>
+            <button class="nav-btn" data-view="sharepoint">🔗 SharePoint</button>
+            <button class="nav-btn" data-view="cleaning">🧹 Data Cleaning</button>
             <button class="nav-btn" data-view="migrate">🚀 Migrate</button>
             <button class="nav-btn" data-view="jobs">📋 Jobs <span class="job-badge" id="jobBadge">0</span></button>
         </div>
@@ -68,6 +70,19 @@
                     <div class="status-detail" id="adfDetail"></div>
                 </div>
             </div>
+
+            <!-- Authentication Status -->
+            <div class="auth-status-section">
+                <h3>🔐 Authentication Status</h3>
+                <div class="auth-info" id="authInfo">
+                    <p class="loading-small">Loading...</p>
+                </div>
+                <div class="auth-actions">
+                    <button class="btn btn-secondary" id="logoutBtn">🔓 Clear Cache & Logout</button>
+                    <p class="auth-hint" id="authHint" style="display:none;"></p>
+                </div>
+            </div>
+
             <div class="config-hint">
                 <h3>🔧 Configuration</h3>
                 <p>Add your Azure credentials to <code>.env</code> to connect. See <code>.env.example</code> for
@@ -127,13 +142,30 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Target Table Name</label>
-                            <input id="migrateTable" class="form-input" type="text" placeholder="e.g. customers_data"
-                                required>
+                            <label>Target Table</label>
+                            <select id="migrateTable" class="form-input" required>
+                                <option value="">Select existing table or new...</option>
+                                <option value="__new__">-- Create new table --</option>
+                                <!-- options populated dynamically -->
+                            </select>
+                            <input id="migrateTableNew" class="form-input" type="text" placeholder="Enter new table name"
+                                style="display:none; margin-top:8px;" />
                         </div>
                         <div class="form-group">
                             <label>Schema</label>
-                            <input id="migrateSchema" class="form-input" type="text" value="dbo" placeholder="dbo">
+                            <select id="migrateSchema" class="form-input">
+                                <!-- options populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row" id="pipelineRow">
+                        <div class="form-group">
+                            <label>ADF Pipeline</label>
+                            <select id="migratePipeline" class="form-input">
+                                <option value="">(use generated)</option>
+                                <!-- pipelines filled dynamically -->
+                            </select>
                         </div>
                     </div>
 
@@ -169,6 +201,42 @@
             </div>
         </div>
 
+        <!-- ═══ SHAREPOINT VIEW ═══ -->
+        <div class="view" id="sharepointView">
+            <div class="explorer-layout">
+                <div class="explorer-sidebar">
+                    <h3>📁 Folders</h3>
+                    <div class="container-list" id="spFolderList">
+                        <div class="loading-small">Loading...</div>
+                    </div>
+                </div>
+                <div class="explorer-main">
+                    <div class="explorer-header">
+                        <h3>📄 SharePoint Files</h3>
+                        <span class="explorer-path" id="spPath">Select a folder</span>
+                    </div>
+                    <div style="display:flex;gap:8px;margin:8px 0;align-items:center;">
+                        <button class="btn btn-secondary" id="spSelectAll">Select All</button>
+                        <button class="btn" id="spClearAll">Clear</button>
+                        <label style="margin-left:16px;">
+                            <input type="checkbox" id="spUseCleaning" /> Clean files before upload
+                        </label>
+                        <select id="spTargetContainer" style="margin-left:auto;"><option value="">Select target container...</option></select>
+                        <button class="btn btn-primary" id="spMigrateBtn">Migrate Selected</button>
+                    </div>
+                    <div class="file-list" id="spFileList">
+                        <div class="empty-hint">← Select a folder to list files</div>
+                    </div>
+                </div>
+                <div class="explorer-preview" id="spPreviewPanel">
+                    <h3>🔍 File Preview</h3>
+                    <div class="preview-content" id="spPreviewContent">
+                        <div class="empty-hint">Select a file to preview</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ═══ JOBS VIEW ═══ -->
         <div class="view" id="jobsView">
             <h2>📋 Migration Jobs</h2>
@@ -182,6 +250,56 @@
                 <div class="log-viewer" id="logViewer">
                     <h4>📜 Logs</h4>
                     <div class="log-entries" id="logEntries"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ CLEANING DASHBOARD VIEW ═══ -->
+        <div class="view" id="cleaningView">
+            <h2>🧹 Data Cleaning Dashboard</h2>
+
+            <div class="cleaning-controls">
+                <button class="btn-primary" id="triggerScanBtn">🔄 Run Cleaning Scan</button>
+                <button class="btn-secondary" id="refreshStatsBtn">📊 Refresh Statistics</button>
+            </div>
+
+            <div class="cleaning-stats-grid">
+                <div class="stat-card">
+                    <h3>System Status</h3>
+                    <div class="stat-value" id="cleaningStatus">Unknown</div>
+                    <div class="stat-label">Last scan: <span id="lastScanTime">-</span></div>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Today's Processing</h3>
+                    <div class="stat-value" id="filesProcessedToday">0</div>
+                    <div class="stat-label">Files processed</div>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Pending Files</h3>
+                    <div class="stat-value" id="pendingFiles">0</div>
+                    <div class="stat-label">Waiting to be processed</div>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Failed Files</h3>
+                    <div class="stat-value error" id="failedFiles">0</div>
+                    <div class="stat-label">Need attention</div>
+                </div>
+            </div>
+
+            <div class="cleaning-projects-section">
+                <h3>📁 Project Statistics</h3>
+                <div class="projects-table" id="projectsTable">
+                    <div class="empty-hint">Loading project statistics...</div>
+                </div>
+            </div>
+
+            <div class="cleaning-failed-files-section">
+                <h3>❌ Recent Failed Files</h3>
+                <div class="failed-files-table" id="failedFilesTable">
+                    <div class="empty-hint">No failed files to display</div>
                 </div>
             </div>
         </div>

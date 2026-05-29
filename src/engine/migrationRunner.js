@@ -6,14 +6,14 @@ import {
     createBlobDataset, createSqlDataset,
     createCopyPipeline, triggerPipelineRun, getPipelineRunStatus, getActivityRuns,
 } from '../azure/adfClient.js';
-import { detectSchema } from './schemaDetector.js';
+import { detectSchema, validateColumns } from './schemaDetector.js';
 import { generatePipelineDefinition } from './pipelineGenerator.js';
 import { addJob, updateJob, addLog } from '../store.js';
 
 /**
  * Run a full migration: blob file → detect schema → create table → create ADF pipeline → execute.
  */
-export async function runMigration({ containerName, blobName, tableName, schema = 'dbo', useAdf = true }) {
+export async function runMigration({ containerName, blobName, tableName, schema = 'dbo', useAdf = true, columns }) {
     const jobId = uuidv4().slice(0, 8);
     const job = addJob({
         id: jobId,
@@ -34,18 +34,29 @@ export async function runMigration({ containerName, blobName, tableName, schema 
         addLog(jobId, 'info', `File: ${blobProps.format}, ${formatBytes(blobProps.size)}`);
         updateJob(jobId, { fileSize: blobProps.size, fileFormat: blobProps.format });
 
-        // ─── Step 2: Detect schema ─────────────────
+        // ─── Step 2: Detect schema (or use overrides) ─────────────────
         updateJob(jobId, { step: 'Detecting schema' });
         addLog(jobId, 'info', 'Downloading file for schema detection...');
 
         const content = await downloadBlobContent(containerName, blobName);
-        const schemaResult = detectSchema(content, blobProps.format);
-
-        if (schemaResult.error) {
-            throw new Error(`Schema detection failed: ${schemaResult.error}`);
+        let schemaResult;
+        if (columns && Array.isArray(columns)) {
+            // use provided column definitions (from preview overrides)
+            schemaResult = { columns };
+            addLog(jobId, 'info', 'Using user-supplied schema overrides');
+            // validate the overrides against the actual data (especially booleans)
+            const errs = validateColumns(content, blobProps.format, schemaResult.columns);
+            if (errs.length) {
+                throw new Error(`Schema validation failed: ${errs.join('; ')}`);
+            }
+        } else {
+            schemaResult = detectSchema(content, blobProps.format);
+            if (schemaResult.error) {
+                throw new Error(`Schema detection failed: ${schemaResult.error}`);
+            }
         }
 
-        addLog(jobId, 'success', `Detected ${schemaResult.columns.length} columns, ${schemaResult.rowCount} rows`);
+        addLog(jobId, 'success', `Detected ${schemaResult.columns.length} columns${schemaResult.rowCount ? ', ' + schemaResult.rowCount + ' rows' : ''}`);
         updateJob(jobId, {
             status: 'schema_detected',
             columns: schemaResult.columns,

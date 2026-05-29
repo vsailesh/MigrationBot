@@ -1,0 +1,567 @@
+{
+  "project_name": "CareFirst",
+  "description": "CareFirst Medicaid Data Schema",
+  "version": "2.1",
+  "auto_schema_update": true,
+  "columns": {
+    "MEMBER_HCC_ID": {
+      "type": "string",
+      "description": "Member HCC identifier",
+      "required": true,
+      "max_length": 50,
+      "targetTable": "cfMembersTbl"
+    },
+    "MedicaidID": {
+      "type": "string",
+      "description": "Medicaid ID",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfMembersTbl"
+    },
+    "MEMBER_LIFE_ID": {
+      "type": "string",
+      "description": "Member life ID",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberEffectiveDate": {
+      "type": "date",
+      "description": "Member coverage effective date",
+      "required": false,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberTermDate": {
+      "type": "date",
+      "description": "Member coverage termination date",
+      "required": false,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberFirstName": {
+      "type": "string",
+      "description": "Member first name",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberLastName": {
+      "type": "string",
+      "description": "Member last name",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberMiddleName": {
+      "type": "string",
+      "description": "Member middle name",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberDOB": {
+      "type": "date",
+      "description": "Member date of birth",
+      "required": false,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberGender": {
+      "type": "string",
+      "description": "Member gender",
+      "required": false,
+      "max_length": 10,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberAddr1": {
+      "type": "string",
+      "description": "Member address line 1",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberAddr2": {
+      "type": "string",
+      "description": "Member address line 2",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberCity": {
+      "type": "string",
+      "description": "Member city",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberState": {
+      "type": "string",
+      "description": "Member state",
+      "required": false,
+      "max_length": 2,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberCounty": {
+      "type": "string",
+      "description": "Member county",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberZipcode": {
+      "type": "string",
+      "description": "Member ZIP code",
+      "required": false,
+      "max_length": 10,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberPhone": {
+      "type": "string",
+      "description": "Member phone number",
+      "required": false,
+      "max_length": 20,
+      "targetTable": "cfMembersTbl"
+    },
+    "MemberEmail": {
+      "type": "string",
+      "description": "Member email address",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "cfMembersTbl"
+    },
+    "MedicaidCoverageProduct": {
+      "type": "string",
+      "description": "Medicaid coverage product",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "cfMembersTbl"
+    },
+    "PCPID": {
+      "type": "string",
+      "description": "Primary care provider ID",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfProviderTbl"
+    },
+    "PCP_FirstName": {
+      "type": "string",
+      "description": "PCP first name",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "cfProviderTbl"
+    },
+    "PCP_LastName": {
+      "type": "string",
+      "description": "PCP last name",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "cfProviderTbl"
+    },
+    "PCP_NPI": {
+      "type": "string",
+      "description": "PCP National Provider Identifier",
+      "required": false,
+      "max_length": 20,
+      "targetTable": "cfProviderTbl"
+    },
+    "PCP_Effective_Date": {
+      "type": "date",
+      "description": "PCP assignment effective date",
+      "required": false,
+      "targetTable": "cfProviderTbl"
+    },
+    "Practice_Name": {
+      "type": "string",
+      "description": "Practice name",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "cfProviderTbl"
+    },
+    "Practice_Address1": {
+      "type": "string",
+      "description": "Practice address line 1",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "cfProviderTbl"
+    },
+    "Practice_Address2": {
+      "type": "string",
+      "description": "Practice address line 2",
+      "required": false,
+      "max_length": 255,
+      "targetTable": "cfProviderTbl"
+    },
+    "Practice_City": {
+      "type": "string",
+      "description": "Practice city",
+      "required": false,
+      "max_length": 100,
+      "targetTable": "cfProviderTbl"
+    },
+    "Practice_State": {
+      "type": "string",
+      "description": "Practice state",
+      "required": false,
+      "max_length": 2,
+      "targetTable": "cfProviderTbl"
+    },
+    "Practice_Zipcode": {
+      "type": "string",
+      "description": "Practice ZIP code",
+      "required": false,
+      "max_length": 10,
+      "targetTable": "cfProviderTbl"
+    },
+    "Practice_Phone": {
+      "type": "string",
+      "description": "Practice phone number",
+      "required": false,
+      "max_length": 20,
+      "targetTable": "cfProviderTbl"
+    },
+    "Immunizations_Adolescents_HPV": {
+      "type": "string",
+      "description": "HPV immunization status for adolescents",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Immunizations_Adolescents_Meningococcal": {
+      "type": "string",
+      "description": "Meningococcal immunization status for adolescents",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Immunizations_Adolescents_Tdap": {
+      "type": "string",
+      "description": "Tdap immunization status for adolescents",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "IMA_Combo_2": {
+      "type": "string",
+      "description": "IMA Combo 2 indicator",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Well_Child_Visits_3_21_Years": {
+      "type": "string",
+      "description": "Well child visits for ages 3-21",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Chlamydia_Screening_Women": {
+      "type": "string",
+      "description": "Chlamydia screening status for women",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "HbA1c_Control_LT_8": {
+      "type": "string",
+      "description": "HbA1c control less than 8.0",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Diabetes_Care_Eye_Exam": {
+      "type": "string",
+      "description": "Diabetes care eye exam indicator",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Lead_Screening_Children_MDH": {
+      "type": "string",
+      "description": "Lead screening in children (MDH)",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Counseling_Physical_Activity_WCC": {
+      "type": "string",
+      "description": "Counseling for physical activity (WCC)",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Nutritional_Counseling_Children_WCC": {
+      "type": "string",
+      "description": "Nutritional counseling for children (WCC)",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Weight_Assessment_Children_WCC": {
+      "type": "string",
+      "description": "Weight assessment for children (WCC)",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Well_Child_Visits_to_15_Months": {
+      "type": "string",
+      "description": "Well child visits up to 15 months",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Well_Child_Visits_15_30_Months": {
+      "type": "string",
+      "description": "Well child visits 15-30 months",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "SSI_Child_Ambulatory_Visit": {
+      "type": "string",
+      "description": "SSI child ambulatory visit indicator",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "SSI_Adult_Ambulatory_Visit": {
+      "type": "string",
+      "description": "SSI adult ambulatory visit indicator",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Adult_Annual_Preventive_Ambulatory_Visit": {
+      "type": "string",
+      "description": "Adult annual preventive/ambulatory visit (AAP)",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Cervical_CA_Screening_Women": {
+      "type": "string",
+      "description": "Cervical cancer screening for women",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Diabetes_Care_A1C_Test": {
+      "type": "string",
+      "description": "Diabetes care A1C test indicator",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Lead_Screening_Children_HEDIS": {
+      "type": "string",
+      "description": "Lead screening in children (HEDIS)",
+      "required": false,
+      "max_length": 50,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Last_Visit_With_Attributed_Group": {
+      "type": "date",
+      "description": "Last visit with attributed group",
+      "required": false,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Well Child Visits 3-21 Years of Age": {
+      "type": "string",
+      "description": "Auto-detected column: Well Child Visits 3-21 Years of Age",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Adult Annual  Preventive/ Ambulatory Visit (AAP)": {
+      "type": "string",
+      "description": "Auto-detected column: Adult Annual  Preventive/ Ambulatory Visit (AAP)",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Cervical CA Screening Women": {
+      "type": "string",
+      "description": "Auto-detected column: Cervical CA Screening Women",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Last Visit With Attributed Group": {
+      "type": "string",
+      "description": "Auto-detected column: Last Visit With Attributed Group",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Lead Screening in Children (MDH)": {
+      "type": "string",
+      "description": "Auto-detected column: Lead Screening in Children (MDH)",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Counseling for Physical Activity (WCC)": {
+      "type": "string",
+      "description": "Auto-detected column: Counseling for Physical Activity (WCC)",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Nutritional Counseling Children (WCC)": {
+      "type": "string",
+      "description": "Auto-detected column: Nutritional Counseling Children (WCC)",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Weight Assessment Children (WCC)": {
+      "type": "string",
+      "description": "Auto-detected column: Weight Assessment Children (WCC)",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "HbA1c Control (<8.0)": {
+      "type": "string",
+      "description": "Auto-detected column: HbA1c Control (<8.0)",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Diabetes Care - Eye Exam": {
+      "type": "string",
+      "description": "Auto-detected column: Diabetes Care - Eye Exam",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Diabetes Care A1C Test": {
+      "type": "string",
+      "description": "Auto-detected column: Diabetes Care A1C Test",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Chlamydia Screening Women": {
+      "type": "string",
+      "description": "Auto-detected column: Chlamydia Screening Women",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Well Child Visits to 15 Months": {
+      "type": "string",
+      "description": "Auto-detected column: Well Child Visits to 15 Months",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "SSI Child Ambulatory Visit": {
+      "type": "string",
+      "description": "Auto-detected column: SSI Child Ambulatory Visit",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Immunizations Adolescents - HPV": {
+      "type": "string",
+      "description": "Auto-detected column: Immunizations Adolescents - HPV",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Immunizations Adolescents - Meningococcal": {
+      "type": "string",
+      "description": "Auto-detected column: Immunizations Adolescents - Meningococcal",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Immunizations Adolescents - Tdap": {
+      "type": "string",
+      "description": "Auto-detected column: Immunizations Adolescents - Tdap",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "IMA - Combo 2": {
+      "type": "string",
+      "description": "Auto-detected column: IMA - Combo 2",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Well Child Visits 15-30 Months": {
+      "type": "string",
+      "description": "Auto-detected column: Well Child Visits 15-30 Months",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "SSI Adult Ambulatory Visit": {
+      "type": "string",
+      "description": "Auto-detected column: SSI Adult Ambulatory Visit",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "Lead Screening in Children (HEDIS)": {
+      "type": "string",
+      "description": "Auto-detected column: Lead Screening in Children (HEDIS)",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "SVC_HBA1C": {
+      "type": "string",
+      "description": "Auto-detected column: SVC_HBA1C",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "SVC_EGFR": {
+      "type": "string",
+      "description": "Auto-detected column: SVC_EGFR",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    },
+    "SVC_URINALYSIS": {
+      "type": "string",
+      "description": "Auto-detected column: SVC_URINALYSIS",
+      "required": false,
+      "max_length": 1000,
+      "targetTable": "cfClinicalTbl"
+    }
+  },
+  "data_quality_rules": {
+    "required_fields": [
+      "MEMBER_HCC_ID"
+    ],
+    "date_formats": [
+      "MM/DD/YYYY",
+      "YYYY-MM-DD",
+      "MM-DD-YYYY"
+    ],
+    "invalid_dates": [
+      "1970-01-01",
+      "1900-01-01",
+      "0001-01-01"
+    ],
+    "phone_validation": true,
+    "zip_validation": true,
+    "email_validation": true
+  },
+  "transformations": {
+    "column_mappings": {},
+    "value_mappings": {
+      "GENDER": {
+        "M": "Male",
+        "F": "Female",
+        "U": "Unknown"
+      }
+    },
+    "default_values": {
+      "CLAIM_COUNT": 0,
+      "TOTAL_CLAIM_AMOUNT": 0
+    }
+  }
+}

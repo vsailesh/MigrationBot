@@ -10,13 +10,16 @@
     },
     "dependencies": {
         "@azure/arm-datafactory": "^16.0.0",
-        "@azure/identity": "^4.6.0",
+        "@azure/identity": "^4.13.0",
         "@azure/storage-blob": "^12.26.0",
+        "chokidar": "^3.6.0",
         "cors": "^2.8.5",
         "csv-parse": "^5.6.0",
         "dotenv": "^16.4.7",
         "express": "^4.21.2",
         "mssql": "^11.0.1",
-        "uuid": "^11.1.0"
+        "node-cron": "^3.0.3",
+        "uuid": "^11.1.0",
+        "xlsx": "^0.18.5"
     }
 }

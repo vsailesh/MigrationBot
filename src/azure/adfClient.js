@@ -22,8 +22,15 @@ function getClient() {
 }
 
 function getFactoryParams() {
+    // allow ADF to live in a different resource group than other resources
+    const rg = process.env.AZURE_ADF_RESOURCE_GROUP;
+    console.log('ADF Resource Group:', rg); // Debug log
+    if (!rg) {
+        throw new Error('AZURE_ADF_RESOURCE_GROUP or AZURE_RESOURCE_GROUP must be set');
+    }
+
     return {
-        resourceGroupName: process.env.AZURE_RESOURCE_GROUP,
+        resourceGroupName: rg,
         factoryName: process.env.AZURE_DATA_FACTORY_NAME,
     };
 }
@@ -37,9 +44,11 @@ export async function testAdfConnection() {
         const client = getClient();
         const { resourceGroupName, factoryName } = getFactoryParams();
         const factory = await client.factories.get(resourceGroupName, factoryName);
+        console.log("running testAdfConnection, got factory:", factory); // Debug log
         return {
             connected: true,
             factoryName: factory.name,
+            resourceGroup: resourceGroupName,
             location: factory.location,
             provisioningState: factory.provisioningState,
         };
@@ -270,18 +279,87 @@ export async function createCopyPipeline({ pipelineName, sourceDatasetName, sink
 }
 
 // ════════════════════════════════════════════════════
+// Triggers
+// ════════════════════════════════════════════════════
+
+/**
+ * Create a blob event trigger that fires on file creation.
+ */
+export async function createBlobEventTrigger({ triggerName, pipelineName, containerName, folderPath, fileName, parameters = {} }) {
+    const client = getClient();
+    const { resourceGroupName, factoryName } = getFactoryParams();
+
+    // Construct the blob path pattern
+    const blobPathBeginsWith = `${containerName}/${folderPath}/`;
+
+    const trigger = {
+        properties: {
+            type: 'BlobEventsTrigger',
+            typeProperties: {
+                blobPathBeginsWith: blobPathBeginsWith,
+                events: ['Microsoft.Storage.BlobCreated'],
+                scope: `/subscriptions/${process.env.AZURE_SUBSCRIPTION_ID}/resourceGroups/${process.env.AZURE_RESOURCE_GROUP}/providers/Microsoft.Storage/storageAccounts/${getStorageAccountName()}`,
+            },
+            pipelines: [{
+                pipelineReference: {
+                    type: 'PipelineReference',
+                    referenceName: pipelineName,
+                },
+                parameters: parameters,
+            }],
+        },
+    };
+
+    const result = await client.triggers.createOrUpdate(
+        resourceGroupName, factoryName, triggerName, trigger
+    );
+
+    console.log(`✅ ADF: Created blob event trigger: ${triggerName}`);
+    return { name: result.name, type: 'BlobEventsTrigger' };
+}
+
+/**
+ * Start a trigger.
+ */
+export async function startTrigger(triggerName) {
+    const client = getClient();
+    const { resourceGroupName, factoryName } = getFactoryParams();
+
+    await client.triggers.beginStart(resourceGroupName, factoryName, triggerName);
+    console.log(`▶️ ADF: Started trigger: ${triggerName}`);
+    return { name: triggerName, status: 'Started' };
+}
+
+/**
+ * Stop a trigger.
+ */
+export async function stopTrigger(triggerName) {
+    const client = getClient();
+    const { resourceGroupName, factoryName } = getFactoryParams();
+
+    await client.triggers.beginStop(resourceGroupName, factoryName, triggerName);
+    console.log(`⏹️ ADF: Stopped trigger: ${triggerName}`);
+    return { name: triggerName, status: 'Stopped' };
+}
+
+// ════════════════════════════════════════════════════
 // Pipeline Runs
 // ════════════════════════════════════════════════════
 
 /**
  * Trigger a pipeline run.
  */
-export async function triggerPipelineRun(pipelineName) {
+export async function triggerPipelineRun(pipelineName, parameters = {}) {
     const client = getClient();
     const { resourceGroupName, factoryName } = getFactoryParams();
 
+    const options = {};
+    if (Object.keys(parameters).length > 0) {
+        options.parameters = parameters;
+    }
+
     const result = await client.pipelines.createRun(
-        resourceGroupName, factoryName, pipelineName
+        resourceGroupName, factoryName, pipelineName, options
     );
 
     console.log(`🚀 ADF: Triggered pipeline run: ${result.runId}`);

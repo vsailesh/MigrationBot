@@ -295,6 +295,65 @@ body::before {
     color: var(--text-muted);
 }
 
+.auth-status-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.auth-status-section h3 {
+    font-size: 15px;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.auth-info {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.auth-info .token-item {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.auth-info .token-item:last-child {
+    border-bottom: none;
+}
+
+.auth-info .token-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+.auth-info .token-value {
+    color: var(--status-ok);
+}
+
+.auth-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.auth-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 .config-hint {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
@@ -895,5 +954,184 @@ body::before {
 
     .job-card {
         grid-template-columns: auto 1fr;
+    }
+}
+
+/* ── Cleaning Dashboard View ─────────────────────── */
+.cleaning-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    align-items: center;
+}
+
+.cleaning-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.stat-card h3 {
+    margin: 0 0 1rem 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.stat-value.error {
+    color: var(--status-error);
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.cleaning-projects-section,
+.cleaning-failed-files-section {
+    margin-bottom: 2rem;
+}
+
+.cleaning-projects-section h3,
+.cleaning-failed-files-section h3 {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.projects-table,
+.failed-files-table {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.projects-table {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+}
+
+.project-stat-item {
+    background: var(--bg-card);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.project-stat-item .project-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.project-stat-item .stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.project-stat-item .stat-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.failed-files-table {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.failed-file-item {
+    display: grid;
+    grid-template-columns: 2fr 1fr 2fr 1fr;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+}
+
+.failed-file-item:last-child {
+    border-bottom: none;
+}
+
+.failed-file-item .file-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.failed-file-item .project-badge {
+    background: var(--status-error);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.failed-file-item .error-message {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.failed-file-item .timestamp {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.failed-file-item .missing-columns {
+    font-size: 0.75rem;
+    color: var(--text-warning);
+    grid-column: span 4;
+    margin-top: 4px;
+}
+
+/* Responsive adjustments for cleaning dashboard */
+@media (max-width: 768px) {
+    .cleaning-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cleaning-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .projects-table {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .failed-file-item {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .failed-file-item .error-message {
+        white-space: normal;
     }
 }

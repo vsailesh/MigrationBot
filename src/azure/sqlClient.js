@@ -1,28 +1,88 @@
 import sql from 'mssql';
+import { DeviceCodeCredential, InteractiveBrowserCredential } from '@azure/identity';
+import { TokenCache } from './tokenCache.js';
 
 let pool = null;
 
-function getConfig() {
-    return {
-        server: process.env.AZURE_SQL_SERVER,
-        database: process.env.AZURE_SQL_DATABASE,
-        user: process.env.AZURE_SQL_USER,
-        password: process.env.AZURE_SQL_PASSWORD,
-        options: {
-            encrypt: true,
-            trustServerCertificate: false,
-        },
-        connectionTimeout: 15000,
-        requestTimeout: 60000,
-    };
-}
-
-async function getPool() {
+export async function getPool() {
     if (!pool) {
-        const config = getConfig();
-        if (!config.server) {
+        const server = process.env.AZURE_SQL_SERVER;
+        const database = process.env.AZURE_SQL_DATABASE;
+
+        if (!server) {
             throw new Error('AZURE_SQL_SERVER is not configured');
         }
+
+        // Base config (will be extended depending on auth method)
+        const config = {
+            server,
+            database,
+            options: {
+                encrypt: true,
+                trustServerCertificate: false,
+            },
+            connectionTimeout: 15000,
+            requestTimeout: 60000,
+        };
+
+        const authMode = (process.env.Authentication || process.env.AZURE_SQL_AUTH || '').toUpperCase();
+        console.log('sqlClient: authMode=', authMode);
+
+        if (authMode === 'MFA' || authMode === 'AAD' || authMode === 'AZUREAD') {
+            console.log('sqlClient: using AAD device-code authentication (MFA)');
+            
+            // Try to load cached token first
+            let token = TokenCache.loadToken('sql');
+            
+            if (!token) {
+                console.log('sqlClient: no cached token found, prompting for MFA...');
+                // Use Azure AD device code flow to obtain an access token (supports MFA)
+                const tenantId = process.env.AZURE_TENANT_ID;
+                const clientId = process.env.AZURE_CLIENT_ID;
+
+                const userPrompt = (info) => {
+                    // This prints a friendly message with the URL and code for interactive auth
+                    // The device code flow will require the user to visit the URL and enter the code
+                    // Output will appear in the server terminal where you started the app.
+                    // Example: "To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code ABCDE to authenticate."
+                    console.log('\n' + '='.repeat(80));
+                    console.log(info.message);
+                    console.log('='.repeat(80) + '\n');
+                };
+
+                const credential = new DeviceCodeCredential({ tenantId, clientId, userPromptCallback: userPrompt });
+
+                // Acquire token for Azure SQL
+                token = await credential.getToken('https://database.windows.net/.default');
+                if (!token || !token.token) {
+                    throw new Error('Failed to acquire access token for Azure SQL');
+                }
+                
+                // Cache the token for future use
+                TokenCache.saveToken('sql', token);
+            } else {
+                console.log('sqlClient: using cached token (no MFA required)');
+            }
+
+            // Use AAD access token with tedious via mssql
+            config.authentication = {
+                type: 'azure-active-directory-access-token',
+                options: {
+                    token: token.token,
+                },
+            };
+        } else {
+            console.log('sqlClient: using SQL auth (user/password)');
+            // Default to SQL authentication using user/password
+            const user = process.env.AZURE_SQL_USER;
+            const password = process.env.AZURE_SQL_PASSWORD;
+            if (!user) {
+                throw new Error('AZURE_SQL_USER is not configured');
+            }
+            config.user = user;
+            config.password = password;
+        }
+
         pool = await sql.connect(config);
     }
     return pool;

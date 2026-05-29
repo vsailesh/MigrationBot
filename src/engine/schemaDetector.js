@@ -209,3 +209,68 @@ export function generateDDL(tableName, columns, schema = 'dbo') {
 
     return `CREATE TABLE [${schema}].[${tableName}] (\n  [_migration_id] INT IDENTITY(1,1) PRIMARY KEY,\n${colDefs}\n);`;
 }
+
+// -----------------------------------------------------------------------------
+// Schema validation helpers
+// -----------------------------------------------------------------------------
+
+/**
+ * Validate column definitions against the actual blob content. Currently this
+ * only checks boolean columns and returns an array of error messages for any
+ * values that don't look like a valid boolean. The calling code can present
+ * these to the user so they can adjust the schema before running migration.
+ */
+export function validateColumns(content, format = 'CSV', columns = []) {
+    const errors = [];
+    const boolCols = columns.filter(c => c.adfType === 'Boolean');
+    if (boolCols.length === 0) return errors;
+
+    try {
+        if (format === 'CSV' || format === 'TSV') {
+            const { parse } = require('csv-parse/sync');
+            const records = parse(content, {
+                columns: true,
+                delimiter: format === 'TSV' ? '\t' : ',',
+                skip_empty_lines: true,
+                trim: true,
+                relax_quotes: true,
+                relax_column_count: true,
+            });
+            const boolSet = new Set(['true','false','1','0','yes','no']);
+            records.slice(0,1000).forEach((row, idx) => {
+                boolCols.forEach(col => {
+                    const key = col.originalName || col.name;
+                    const val = row[key];
+                    if (val !== undefined && val !== null && String(val).trim() !== '') {
+                        const str = String(val).trim().toLowerCase();
+                        if (!boolSet.has(str)) {
+                            errors.push(`Column ${col.name} has non-boolean value "${val}" at row ${idx+1}`);
+                        }
+                    }
+                });
+            });
+        } else if (format === 'JSON' || format === 'JSONL') {
+            const raw = format === 'JSONL' ?
+                content.split('\n').filter(l => l.trim()).map(l => JSON.parse(l)) :
+                JSON.parse(content);
+            const data = Array.isArray(raw) ? raw : [raw];
+            const boolSet = new Set(['true','false','1','0','yes','no']);
+            data.slice(0,1000).forEach((obj, idx) => {
+                boolCols.forEach(col => {
+                    const key = col.originalName || col.name;
+                    const val = obj[key];
+                    if (val !== undefined && val !== null && String(val).trim() !== '') {
+                        const str = String(val).trim().toLowerCase();
+                        if (!boolSet.has(str)) {
+                            errors.push(`Column ${col.name} has non-boolean value "${val}" at row ${idx+1}`);
+                        }
+                    }
+                });
+            });
+        }
+    } catch (e) {
+        // ignore parse errors
+    }
+    return errors;
+}
+
