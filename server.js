@@ -8,8 +8,9 @@ import { fileURLToPath } from 'url';
 import apiRoutes from './src/routes/api.js';
 import dataCleaner from './src/dataCleaner.js';
 
-// make sure metadata table is created before we do anything else
-await dataCleaner.ensureMetadataTable().catch(err => {
+// Start metadata table setup asynchronously so the web server can come up
+// even if SQL auth is not ready yet.
+void dataCleaner.ensureMetadataTable().catch(err => {
     console.warn('startup: metadata table check failed', err.message);
 });
 
@@ -44,7 +45,7 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     // Start data cleaning monitoring if enabled
     if (process.env.ENABLE_CLEANING_MONITORING === 'true') {
         dataCleaner.startMonitoring();
@@ -62,4 +63,9 @@ app.listen(PORT, () => {
 ║                                                  ║
 ╚══════════════════════════════════════════════════╝
 `);
+});
+
+server.on('error', (err) => {
+    console.error('Server startup error:', err);
+    process.exit(1);
 });
