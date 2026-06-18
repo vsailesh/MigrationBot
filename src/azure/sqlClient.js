@@ -4,6 +4,38 @@ import { TokenCache } from './tokenCache.js';
 
 let pool = null;
 
+export async function loginWithDeviceCode() {
+    const tenantId = process.env.AZURE_TENANT_ID;
+    const clientId = process.env.AZURE_CLIENT_ID;
+
+    if (!tenantId || !clientId) {
+        throw new Error('AZURE_TENANT_ID and AZURE_CLIENT_ID are required to use MFA login.');
+    }
+
+    let promptMessage = '';
+    const credential = new DeviceCodeCredential({
+        tenantId,
+        clientId,
+        userPromptCallback: (info) => {
+            promptMessage = info.message;
+            console.log('\n' + '='.repeat(80));
+            console.log(info.message);
+            console.log('='.repeat(80) + '\n');
+        },
+    });
+
+    const token = await credential.getToken('https://database.windows.net/.default');
+    if (!token || !token.token) {
+        throw new Error('Failed to acquire access token for Azure SQL');
+    }
+
+    TokenCache.saveToken('sql', token);
+    return {
+        success: true,
+        message: promptMessage || 'Microsoft sign-in completed successfully.',
+    };
+}
+
 export async function getPool() {
     if (!pool) {
         const server = process.env.AZURE_SQL_SERVER;
@@ -25,59 +57,43 @@ export async function getPool() {
             requestTimeout: 60000,
         };
 
-        const authMode = (process.env.Authentication || process.env.AZURE_SQL_AUTH || '').toUpperCase();
+        const authMode = (process.env.Authentication || process.env.AZURE_SQL_AUTH || '').trim().toUpperCase();
+        const user = (process.env.AZURE_SQL_USER || '').trim();
+        const password = (process.env.AZURE_SQL_PASSWORD || '').trim();
+        const isAzureAppService = Boolean(process.env.WEBSITE_SITE_NAME || process.env.WEBSITE_INSTANCE_ID);
         console.log('sqlClient: authMode=', authMode);
 
         if (authMode === 'MFA' || authMode === 'AAD' || authMode === 'AZUREAD') {
-            console.log('sqlClient: using AAD device-code authentication (MFA)');
-            
-            // Try to load cached token first
-            let token = TokenCache.loadToken('sql');
-            
-            if (!token) {
-                console.log('sqlClient: no cached token found, prompting for MFA...');
-                // Use Azure AD device code flow to obtain an access token (supports MFA)
-                const tenantId = process.env.AZURE_TENANT_ID;
-                const clientId = process.env.AZURE_CLIENT_ID;
-
-                const userPrompt = (info) => {
-                    // This prints a friendly message with the URL and code for interactive auth
-                    // The device code flow will require the user to visit the URL and enter the code
-                    // Output will appear in the server terminal where you started the app.
-                    // Example: "To sign in, use a web browser to open the page https://microsoft.com/devicelogin and enter the code ABCDE to authenticate."
-                    console.log('\n' + '='.repeat(80));
-                    console.log(info.message);
-                    console.log('='.repeat(80) + '\n');
-                };
-
-                const credential = new DeviceCodeCredential({ tenantId, clientId, userPromptCallback: userPrompt });
-
-                // Acquire token for Azure SQL
-                token = await credential.getToken('https://database.windows.net/.default');
-                if (!token || !token.token) {
-                    throw new Error('Failed to acquire access token for Azure SQL');
-                }
-                
-                // Cache the token for future use
-                TokenCache.saveToken('sql', token);
+            if (user && password) {
+                console.log('sqlClient: MFA requested, but SQL credentials are present; using SQL auth instead for non-interactive startup');
+                config.user = user;
+                config.password = password;
             } else {
-                console.log('sqlClient: using cached token (no MFA required)');
-            }
+                let token = TokenCache.loadToken('sql');
 
-            // Use AAD access token with tedious via mssql
-            config.authentication = {
-                type: 'azure-active-directory-access-token',
-                options: {
-                    token: token.token,
-                },
-            };
+                if (!token) {
+                    console.log('sqlClient: no cached token found; MFA login must be completed from the dashboard');
+                    throw new Error(
+                        'MFA login is required for Azure SQL. Use the dashboard button to sign in with Microsoft MFA.'
+                    );
+                }
+
+                console.log('sqlClient: using cached token (no MFA required)');
+                config.authentication = {
+                    type: 'azure-active-directory-access-token',
+                    options: {
+                        token: token.token,
+                    },
+                };
+            }
         } else {
             console.log('sqlClient: using SQL auth (user/password)');
             // Default to SQL authentication using user/password
-            const user = process.env.AZURE_SQL_USER;
-            const password = process.env.AZURE_SQL_PASSWORD;
             if (!user) {
                 throw new Error('AZURE_SQL_USER is not configured');
+            }
+            if (!password) {
+                throw new Error('AZURE_SQL_PASSWORD is not configured');
             }
             config.user = user;
             config.password = password;

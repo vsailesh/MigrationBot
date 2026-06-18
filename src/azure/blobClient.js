@@ -2,11 +2,18 @@ import { BlobServiceClient } from '@azure/storage-blob';
 
 let blobServiceClient = null;
 
+function normalizeConnectionString(value) {
+    if (typeof value !== 'string') return '';
+    return value.trim().replace(/^['"]|['"]$/g, '');
+}
+
 function getClient() {
     if (!blobServiceClient) {
-        const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-        if (!connectionString) {
-            throw new Error('AZURE_STORAGE_CONNECTION_STRING is not configured');
+        const connectionString = normalizeConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING || '');
+        if (!connectionString || !connectionString.includes('DefaultEndpointsProtocol=')) {
+            throw new Error(
+                'AZURE_STORAGE_CONNECTION_STRING is not configured correctly. Expected a value that starts with "DefaultEndpointsProtocol=https;..." (without surrounding quotes).'
+            );
         }
         blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
     }
@@ -114,7 +121,7 @@ export async function getBlobProperties(containerName, blobName) {
  * Get the storage account name from the connection string.
  */
 export function getStorageAccountName() {
-    const cs = process.env.AZURE_STORAGE_CONNECTION_STRING || '';
+    const cs = normalizeConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING || '');
     const match = cs.match(/AccountName=([^;]+)/);
     return match ? match[1] : 'unknown';
 }

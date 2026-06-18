@@ -11,6 +11,7 @@ import { generatePipelineDefinition } from '../engine/pipelineGenerator.js';
 import { runMigration } from '../engine/migrationRunner.js';
 import { getJobs, getJob } from '../store.js';
 import { TokenCache } from '../azure/tokenCache.js';
+import { loginWithDeviceCode } from '../azure/sqlClient.js';
 import DataCleaner from '../dataCleaner.js';
 import aetnaService from '../cleaners/aetna_cleaning.js';
 import carefirstService from '../cleaners/cfmd_cleaning.js';
@@ -60,6 +61,23 @@ router.get('/auth/status', (req, res) => {
     });
     
     res.json({ cached_tokens: status });
+});
+
+/**
+ * POST /api/auth/login — Trigger MFA/device-code login flow from the UI
+ */
+router.post('/auth/login', async (req, res) => {
+    try {
+        const result = await loginWithDeviceCode();
+        res.json({
+            ok: true,
+            service: 'sql',
+            message: result.message,
+            details: result,
+        });
+    } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+    }
 });
 
 /**

@@ -212,6 +212,51 @@ async function loadAuthStatus() {
 
 function setupAuthLogout() {
     const logoutBtn = document.getElementById('logoutBtn');
+    const loginMfaBtn = document.getElementById('loginMfaBtn');
+    const authHint = document.getElementById('authHint');
+
+    if (loginMfaBtn) {
+        loginMfaBtn.addEventListener('click', async () => {
+            try {
+                loginMfaBtn.disabled = true;
+                loginMfaBtn.textContent = '⏳ Signing in...';
+                if (authHint) {
+                    authHint.textContent = 'Starting Microsoft sign-in flow...';
+                    authHint.style.display = 'block';
+                    authHint.style.color = 'var(--text-muted)';
+                }
+
+                const response = await fetch(`${API}/auth/login`, { method: 'POST' });
+                const data = await response.json();
+
+                if (!response.ok || !data.ok) {
+                    throw new Error(data.error || 'Unable to start sign-in flow');
+                }
+
+                const message = data.message || 'Sign-in flow started successfully.';
+                if (authHint) {
+                    authHint.innerHTML = message.replace(/\n/g, '<br>');
+                    authHint.style.display = 'block';
+                    authHint.style.color = 'var(--text-muted)';
+                }
+
+                await loadAuthStatus();
+                await checkConnections();
+            } catch (err) {
+                if (authHint) {
+                    authHint.textContent = '❌ ' + err.message;
+                    authHint.style.display = 'block';
+                    authHint.style.color = 'var(--status-error)';
+                } else {
+                    alert('Failed to start sign-in flow: ' + err.message);
+                }
+            } finally {
+                loginMfaBtn.disabled = false;
+                loginMfaBtn.textContent = '🔐 Sign in with MFA';
+            }
+        });
+    }
+
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             if (confirm('Clear all cached authentication tokens? You will need to re-login on next server restart.')) {

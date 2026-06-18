@@ -219,8 +219,16 @@ class DataCleaner {
     constructor(config) {
         this.config = config;
         this.schemaManager = new SchemaManager(config);
-        this.blobServiceClient = BlobServiceClient.fromConnectionString(config.azureStorageConnection);
-        this.containerClient = this.blobServiceClient.getContainerClient(config.containerName);
+
+        if (config.azureStorageConnection) {
+            this.blobServiceClient = BlobServiceClient.fromConnectionString(config.azureStorageConnection);
+            this.containerClient = this.blobServiceClient.getContainerClient(config.containerName);
+        } else {
+            this.blobServiceClient = null;
+            this.containerClient = null;
+            console.warn('Azure Blob Storage connection string is not configured. Blob-dependent startup logic is disabled until AZURE_STORAGE_CONNECTION_STRING is set.');
+        }
+
         this.isMonitoring = false;
         this.lastCheckTime = new Date(Date.now() - (config.pollingIntervalMinutes * 60 * 1000));
 
