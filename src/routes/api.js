@@ -15,6 +15,7 @@ import { loginWithDeviceCode } from '../azure/sqlClient.js';
 import DataCleaner from '../dataCleaner.js';
 import aetnaService from '../cleaners/aetna_cleaning.js';
 import carefirstService from '../cleaners/cfmd_cleaning.js';
+import { testSalesforceConnection, querySalesforce, getSalesforceAuthUrl, exchangeCodeForToken } from '../SalesforceClient.js';
 const router = express.Router();
 
 // ════════════════════════════════════════════════════
@@ -35,6 +36,11 @@ router.get('/status', async (req, res) => {
         sharepoint: await (async () => {
             try {
                 return await testSharePointConnection();
+            } catch (e) { return { connected: false, error: e?.message } }
+        })(),
+        salesforce: await (async () => {
+            try {
+                return await testSalesforceConnection();
             } catch (e) { return { connected: false, error: e?.message } }
         })(),
     });
@@ -827,6 +833,97 @@ router.post('/cleaning/:project/process-to-json', async (req, res) => {
     }
 });
 
+// ════════════════════════════════════════════════════
+// Salesforce
+// ════════════════════════════════════════════════════
+
+router.get('/salesforce/status', async (req, res) => {
+    const result = await testSalesforceConnection();
+    res.json(result);
+});
+
+/**
+ * GET /api/salesforce/login — Returns the Salesforce OAuth URL the frontend
+ * should open in a popup/new tab so the user completes Azure MFA through Salesforce SSO.
+ */
+router.get('/salesforce/login', (req, res) => {
+    try {
+        const url = getSalesforceAuthUrl();
+        res.json({ ok: true, url });
+    } catch (err) {
+        res.status(400).json({ ok: false, error: err.message });
+    }
+});
+
+/**
+ * GET /api/sf-callback — Salesforce redirects here after the user completes Azure MFA.
+ * Exchanges the auth code for tokens, caches them, and closes the popup.
+ */
+router.get('/sf-callback', async (req, res) => {
+    const { code, error, error_description } = req.query;
+
+    if (error) {
+        return res.send(`
+            <html><body style="font-family:sans-serif;padding:32px;">
+            <h2>❌ Salesforce login failed</h2>
+            <p>${error_description || error}</p>
+            <script>setTimeout(() => window.close(), 3000);</script>
+            </body></html>
+        `);
+    }
+
+    if (!code) {
+        return res.status(400).send('<h2>Missing authorization code</h2>');
+    }
+
+    try {
+        await exchangeCodeForToken(code);
+        res.send(`
+            <html><body style="font-family:sans-serif;padding:32px;background:#0f172a;color:#e2e8f0;">
+            <h2 style="color:#10b981;">✅ Salesforce connected!</h2>
+            <p>Authentication successful. You can close this tab.</p>
+            <script>
+                if (window.opener) {
+                    window.opener.postMessage({ type: 'SF_AUTH_SUCCESS' }, '*');
+                }
+                setTimeout(() => window.close(), 1500);
+            </script>
+            </body></html>
+        `);
+    } catch (err) {
+        res.send(`
+            <html><body style="font-family:sans-serif;padding:32px;">
+            <h2>❌ Token exchange failed</h2>
+            <p>${err.message}</p>
+            <script>setTimeout(() => window.close(), 4000);</script>
+            </body></html>
+        `);
+    }
+});
+
+router.get('/salesforce/query', async (req, res) => {
+    try {
+        const soql = req.query.soql;
+        if (!soql) return res.status(400).json({ error: 'soql query param required' });
+        const result = await querySalesforce(soql);
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/salesforce/query', async (req, res) => {
+    try {
+        const { soql } = req.body;
+        if (!soql) return res.status(400).json({ error: 'soql required in body' });
+        const result = await querySalesforce(soql);
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 export default router;
+
 
 

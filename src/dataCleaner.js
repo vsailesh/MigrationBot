@@ -406,8 +406,8 @@ class DataCleaner {
                         BlobPath nvarchar(4000) NULL,
                         OriginalSize bigint NULL,
                         CleanedSize bigint NULL,
-                        [RowCount] int NULL,
-                        [ColumnCount] int NULL,
+                        RecordRowCount int NULL,
+                        RecordColumnCount int NULL,
                         ProcessingStatus nvarchar(50) NULL,
                         ErrorMessage nvarchar(MAX) NULL,
                         NewColumnsFound nvarchar(MAX) NULL,
@@ -638,11 +638,11 @@ class DataCleaner {
             const query = `
                 INSERT INTO FileProcessingMetadata (
                     FileID, FileName, ProjectName, Year, SharePointPath, BlobPath,
-                    OriginalSize, CleanedSize, [RowCount], [ColumnCount], ProcessingStatus,
+                    OriginalSize, CleanedSize, RecordRowCount, RecordColumnCount, ProcessingStatus,
                     ErrorMessage, NewColumnsFound, MissingColumns, ProcessingStartTime, ProcessingEndTime
                 ) VALUES (
                     @fileId, @fileName, @projectName, @year, @sharepointPath, @blobPath,
-                    @originalSize, @cleanedSize, @rowCount, @columnCount, @processingStatus,
+                    @originalSize, @cleanedSize, @recordRowCount, @recordColumnCount, @processingStatus,
                     @errorMessage, @newColumnsFound, @missingColumns, @processingStartTime, @processingEndTime
                 )
             `;
@@ -656,8 +656,8 @@ class DataCleaner {
                 .input('blobPath', sql.NVarChar, metadata.blobPath || null)
                 .input('originalSize', sql.BigInt, metadata.originalSize)
                 .input('cleanedSize', sql.BigInt, metadata.cleanedSize || null)
-                .input('rowCount', sql.Int, metadata.rowCount || null)
-                .input('columnCount', sql.Int, metadata.columnCount || null)
+                .input('recordRowCount', sql.Int, metadata.rowCount || null)
+                .input('recordColumnCount', sql.Int, metadata.columnCount || null)
                 .input('processingStatus', sql.NVarChar, metadata.processingStatus)
                 .input('errorMessage', sql.NVarChar, metadata.errorMessage || null)
                 .input('newColumnsFound', sql.NVarChar, JSON.stringify(metadata.newColumnsFound || []))

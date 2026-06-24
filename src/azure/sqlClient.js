@@ -13,6 +13,12 @@ export async function loginWithDeviceCode() {
     }
 
     let promptMessage = '';
+    let promptResolved = false;
+    let resolvePrompt;
+    const promptReady = new Promise((resolve) => {
+        resolvePrompt = resolve;
+    });
+
     const credential = new DeviceCodeCredential({
         tenantId,
         clientId,
@@ -21,18 +27,38 @@ export async function loginWithDeviceCode() {
             console.log('\n' + '='.repeat(80));
             console.log(info.message);
             console.log('='.repeat(80) + '\n');
+            if (!promptResolved) {
+                promptResolved = true;
+                resolvePrompt();
+            }
         },
     });
 
-    const token = await credential.getToken('https://database.windows.net/.default');
-    if (!token || !token.token) {
-        throw new Error('Failed to acquire access token for Azure SQL');
-    }
+    const tokenPromise = credential.getToken('https://database.windows.net/.default')
+        .then((token) => {
+            if (!token || !token.token) {
+                throw new Error('Failed to acquire access token for Azure SQL');
+            }
+            TokenCache.saveToken('sql', token);
+            return token;
+        })
+        .catch((err) => {
+            console.error('sqlClient: device-code login failed:', err.message);
+            throw err;
+        });
 
-    TokenCache.saveToken('sql', token);
+    // Don't await the full token flow here; we want the UI to receive the prompt immediately.
+    void tokenPromise;
+
+    await Promise.race([
+        promptReady,
+        new Promise((resolve) => setTimeout(resolve, 1500))
+    ]);
+
     return {
         success: true,
-        message: promptMessage || 'Microsoft sign-in completed successfully.',
+        message: promptMessage || 'Microsoft sign-in is starting. Please continue on the device sign-in page.',
+        started: true,
     };
 }
 

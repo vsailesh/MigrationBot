@@ -17,23 +17,37 @@
 </head>
 
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-inner">
-            <div class="logo-section">
-                <div class="logo-icon">🤖</div>
-                <div class="logo-text">
-                    <h1>MigrationBot</h1>
-                    <p class="tagline">Azure Data Factory Migration Agent</p>
+    <div class="auth-gate visible" id="authGate">
+        <div class="auth-gate-card">
+            <div class="auth-gate-icon">🔐</div>
+            <h2>Welcome to MigrationBot</h2>
+            <p class="auth-gate-message" id="authGateMessage">
+                Please sign in with Microsoft MFA to continue to the dashboard.
+            </p>
+            <button class="btn btn-primary auth-gate-btn" id="gateLoginMfaBtn">🔐 Sign in with Microsoft MFA</button>
+            <p class="auth-gate-hint" id="authGateHint">You’ll be guided to complete the device sign-in flow.</p>
+        </div>
+    </div>
+
+    <div class="app-shell" id="appShell">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-inner">
+                <div class="logo-section">
+                    <div class="logo-icon">🤖</div>
+                    <div class="logo-text">
+                        <h1>MigrationBot</h1>
+                        <p class="tagline">Azure Data Factory Migration Agent</p>
+                    </div>
+                </div>
+                <div class="connection-dots" id="connectionDots">
+                    <div class="dot-item" id="dotBlob"><span class="dot"></span> Blob</div>
+                    <div class="dot-item" id="dotSql"><span class="dot"></span> SQL</div>
+                    <div class="dot-item" id="dotAdf"><span class="dot"></span> ADF</div>
+                    <div class="dot-item" id="dotSf"><span class="dot"></span> Salesforce</div>
                 </div>
             </div>
-            <div class="connection-dots" id="connectionDots">
-                <div class="dot-item" id="dotBlob"><span class="dot"></span> Blob</div>
-                <div class="dot-item" id="dotSql"><span class="dot"></span> SQL</div>
-                <div class="dot-item" id="dotAdf"><span class="dot"></span> ADF</div>
-            </div>
-        </div>
-    </header>
+        </header>
 
     <!-- Navigation -->
     <nav class="nav-bar">
@@ -44,6 +58,7 @@
             <button class="nav-btn" data-view="cleaning">🧹 Data Cleaning</button>
             <button class="nav-btn" data-view="migrate">🚀 Migrate</button>
             <button class="nav-btn" data-view="jobs">📋 Jobs <span class="job-badge" id="jobBadge">0</span></button>
+            <button class="nav-btn" data-view="salesforce">☁️ Salesforce</button>
         </div>
     </nav>
 
@@ -68,6 +83,12 @@
                     <h3>Azure Data Factory</h3>
                     <div class="status-indicator loading">Checking...</div>
                     <div class="status-detail" id="adfDetail"></div>
+                </div>
+                <div class="status-card" id="sfStatus">
+                    <div class="status-icon">☁️</div>
+                    <h3>Salesforce</h3>
+                    <div class="status-indicator loading">Checking...</div>
+                    <div class="status-detail" id="sfDetail"></div>
                 </div>
             </div>
 
@@ -302,6 +323,54 @@
                 <div class="failed-files-table" id="failedFilesTable">
                     <div class="empty-hint">No failed files to display</div>
                 </div>
+            </div>
+        </div>
+        <!-- ═══ SALESFORCE VIEW ═══ -->
+        <div class="view" id="salesforceView">
+            <h2>☁️ Salesforce</h2>
+
+            <div class="status-grid" style="margin-bottom:24px;">
+                <div class="status-card" id="sfConnectionCard">
+                    <div class="status-icon">☁️</div>
+                    <h3>Connection</h3>
+                    <div class="status-indicator loading" id="sfConnIndicator">Checking...</div>
+                    <div class="status-detail" id="sfConnDetail"></div>
+                </div>
+            </div>
+
+            <!-- Auth section -->
+            <div class="auth-status-section" style="margin-bottom:24px;">
+                <h3>🔐 Salesforce Authentication (via Azure MFA)</h3>
+                <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">
+                    Clicking Sign In opens a Salesforce login page — which redirects through your
+                    Azure AD MFA flow, the same way you sign in to Salesforce in the browser.
+                </p>
+                <div class="auth-actions">
+                    <button class="btn btn-primary" id="sfLoginBtn">🔐 Sign in with Azure MFA</button>
+                </div>
+                <p class="auth-hint" id="sfAuthHint" style="display:none;margin-top:8px;"></p>
+                <p style="font-size:11px;color:var(--text-muted);margin-top:12px;">
+                    Requires: <code>SF_CLIENT_ID</code> + <code>SF_CLIENT_SECRET</code> in .env
+                    (Salesforce Connected App). Callback URL to register:
+                    <code>http://localhost:3001/api/sf-callback</code>
+                </p>
+            </div>
+
+            <div class="migrate-wizard">
+                <h3>🔍 SOQL Query</h3>
+                <p class="migrate-desc">Run any SOQL query against your Salesforce org and view results inline.</p>
+                <div class="form-row">
+                    <div class="form-group" style="flex:1;">
+                        <label>SOQL</label>
+                        <textarea id="sfSoqlInput" class="form-input" rows="3"
+                            placeholder="SELECT Id, Name, Phone FROM Account LIMIT 20"
+                            style="resize:vertical;font-family:monospace;font-size:13px;"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" id="sfRunQueryBtn">▶ Run Query</button>
+                </div>
+                <div id="sfQueryResult" style="margin-top:16px;"></div>
             </div>
         </div>
     </main>

@@ -105,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupModeToggle();
     setupMigrateForm();
     setupAuthLogout();
+    setupAuthGate();
     setupCleaningDashboard();
     checkConnections();
 });
@@ -123,6 +124,7 @@ function setupNavigation() {
             if (currentView === 'cleaning') loadCleaningDashboard();
             if (currentView === 'migrate') loadMigrateContainers();
             if (currentView === 'jobs') loadJobs();
+            if (currentView === 'salesforce') loadSalesforceView();
         });
     });
 }
@@ -149,39 +151,47 @@ async function checkConnections() {
         updateConnectionDot('dotBlob', 'blobStatus', status.blob, 'Azure Blob Storage');
         updateConnectionDot('dotSql', 'sqlStatus', status.sql, 'Azure SQL Database');
         updateConnectionDot('dotAdf', 'adfStatus', status.adf, 'Azure Data Factory');
-        
+        if (status.salesforce) updateSalesforceDot(status.salesforce);
+
         // Load authentication status
-        await loadAuthStatus();
+        await loadAuthStatus(status);
     } catch (err) {
         console.error('Status check failed:', err);
     }
 }
 
-async function loadAuthStatus() {
+async function loadAuthStatus(status = null) {
     try {
         const authData = await fetchJSON(`${API}/auth/status`);
         const authInfo = document.getElementById('authInfo');
         const authHint = document.getElementById('authHint');
-        
+        const sqlConnected = status?.sql?.connected === true;
+        const hasSqlToken = Boolean(authData.cached_tokens && authData.cached_tokens.sql);
+
         if (!authData.cached_tokens || Object.keys(authData.cached_tokens).length === 0) {
-            authInfo.innerHTML = '<p style="color: var(--text-secondary);">No cached authentication tokens. You will be prompted to login on next server restart.</p>';
-            authHint.style.display = 'none';
+            authInfo.innerHTML = '<p style="color: var(--text-secondary);">No cached authentication tokens. Please sign in to continue.</p>';
+            if (authHint) authHint.style.display = 'none';
+            if (!sqlConnected) {
+                showAuthGate('Please sign in with Microsoft MFA to continue to the dashboard.');
+            } else {
+                hideAuthGate();
+            }
             return;
         }
-        
+
         let html = '';
         let tokensToExpire = [];
-        
+
         for (const [service, info] of Object.entries(authData.cached_tokens)) {
             const expiresIn = info.expiresIn || 0;
             const expiresInMinutes = Math.floor(expiresIn / 60);
-            const status = expiresIn > 300 ? '✅' : '⚠️';
-            
+            const tokenStatus = expiresIn > 300 ? '✅' : '⚠️';
+
             html += `
                 <div class="token-item">
                     <div>
                         <div class="token-label">${service.toUpperCase()}</div>
-                        <div class="token-value">${status} Cached</div>
+                        <div class="token-value">${tokenStatus} Cached</div>
                     </div>
                     <div>
                         <div class="token-label">Expires In</div>
@@ -189,71 +199,140 @@ async function loadAuthStatus() {
                     </div>
                 </div>
             `;
-            
+
             if (expiresIn <= 300) {
                 tokensToExpire.push(`${service} (${expiresInMinutes} min)`);
             }
         }
-        
+
         authInfo.innerHTML = html;
-        
-        if (tokensToExpire.length > 0) {
+
+        if (tokensToExpire.length > 0 && authHint) {
             authHint.innerHTML = `⚠️ Token${tokensToExpire.length > 1 ? 's' : ''} expiring soon: ${tokensToExpire.join(', ')}`;
             authHint.style.display = 'block';
-        } else {
+        } else if (authHint) {
             authHint.style.display = 'none';
+        }
+
+        if (!sqlConnected && !hasSqlToken) {
+            showAuthGate('Please sign in with Microsoft MFA to continue to the dashboard.');
+        } else {
+            hideAuthGate();
         }
     } catch (err) {
         console.error('Failed to load auth status:', err);
         const authInfo = document.getElementById('authInfo');
-        authInfo.innerHTML = '<p style="color: var(--text-secondary);">Unable to load authentication status.</p>';
+        if (authInfo) {
+            authInfo.innerHTML = '<p style="color: var(--text-secondary);">Unable to load authentication status.</p>';
+        }
+    }
+}
+
+function showAuthGate(message = 'Please sign in with Microsoft MFA to continue to the dashboard.') {
+    const gate = document.getElementById('authGate');
+    const msg = document.getElementById('authGateMessage');
+    if (gate && msg) {
+        msg.textContent = message;
+        gate.classList.add('visible');
+    }
+}
+
+function hideAuthGate() {
+    const gate = document.getElementById('authGate');
+    if (gate) {
+        gate.classList.remove('visible');
+    }
+}
+
+function setupAuthGate() {
+    const gateBtn = document.getElementById('gateLoginMfaBtn');
+    if (!gateBtn) return;
+
+    gateBtn.addEventListener('click', async () => {
+        await startMfaLogin();
+    });
+}
+
+async function startMfaLogin() {
+    const loginMfaBtn = document.getElementById('loginMfaBtn');
+    const gateBtn = document.getElementById('gateLoginMfaBtn');
+    const authHint = document.getElementById('authHint');
+    const gateHint = document.getElementById('authGateHint');
+    const gateMessage = document.getElementById('authGateMessage');
+
+    if (loginMfaBtn) loginMfaBtn.disabled = true;
+    if (gateBtn) gateBtn.disabled = true;
+
+    if (authHint) {
+        authHint.textContent = 'Starting Microsoft sign-in flow...';
+        authHint.style.display = 'block';
+        authHint.style.color = 'var(--text-muted)';
+    }
+    if (gateHint) {
+        gateHint.textContent = 'Starting Microsoft sign-in flow...';
+    }
+    if (gateMessage) {
+        gateMessage.textContent = 'Please complete the Microsoft sign-in in your browser.';
+    }
+
+    try {
+        const response = await fetch(`${API}/auth/login`, { method: 'POST' });
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || 'Unable to start sign-in flow');
+        }
+
+        const message = data.message || data.details?.message || 'Sign-in flow started successfully.';
+        const promptHtml = (message || '').replace(/\n/g, '<br>');
+
+        if (authHint) {
+            authHint.innerHTML = promptHtml;
+            authHint.style.display = 'block';
+            authHint.style.color = 'var(--text-muted)';
+        }
+        if (gateHint) {
+            gateHint.innerHTML = promptHtml;
+        }
+        if (gateMessage) {
+            gateMessage.textContent = 'Use the prompt below to complete Microsoft sign-in.';
+        }
+
+        await loadAuthStatus();
+        await checkConnections();
+
+        const status = await fetchJSON(`${API}/status`);
+        if (status.sql?.connected) {
+            hideAuthGate();
+        } else {
+            const exactPrompt = data?.message || data?.details?.message;
+            showAuthGate(exactPrompt || 'The sign-in flow is still waiting for Azure SQL access. Please complete the prompt and try again.');
+        }
+    } catch (err) {
+        if (authHint) {
+            authHint.textContent = '❌ ' + err.message;
+            authHint.style.display = 'block';
+            authHint.style.color = 'var(--status-error)';
+        }
+        if (gateHint) {
+            gateHint.textContent = '❌ ' + err.message;
+        }
+        if (gateMessage) {
+            gateMessage.textContent = 'Unable to start sign-in flow.';
+        }
+    } finally {
+        if (loginMfaBtn) loginMfaBtn.disabled = false;
+        if (gateBtn) gateBtn.disabled = false;
     }
 }
 
 function setupAuthLogout() {
     const logoutBtn = document.getElementById('logoutBtn');
     const loginMfaBtn = document.getElementById('loginMfaBtn');
-    const authHint = document.getElementById('authHint');
 
     if (loginMfaBtn) {
         loginMfaBtn.addEventListener('click', async () => {
-            try {
-                loginMfaBtn.disabled = true;
-                loginMfaBtn.textContent = '⏳ Signing in...';
-                if (authHint) {
-                    authHint.textContent = 'Starting Microsoft sign-in flow...';
-                    authHint.style.display = 'block';
-                    authHint.style.color = 'var(--text-muted)';
-                }
-
-                const response = await fetch(`${API}/auth/login`, { method: 'POST' });
-                const data = await response.json();
-
-                if (!response.ok || !data.ok) {
-                    throw new Error(data.error || 'Unable to start sign-in flow');
-                }
-
-                const message = data.message || 'Sign-in flow started successfully.';
-                if (authHint) {
-                    authHint.innerHTML = message.replace(/\n/g, '<br>');
-                    authHint.style.display = 'block';
-                    authHint.style.color = 'var(--text-muted)';
-                }
-
-                await loadAuthStatus();
-                await checkConnections();
-            } catch (err) {
-                if (authHint) {
-                    authHint.textContent = '❌ ' + err.message;
-                    authHint.style.display = 'block';
-                    authHint.style.color = 'var(--status-error)';
-                } else {
-                    alert('Failed to start sign-in flow: ' + err.message);
-                }
-            } finally {
-                loginMfaBtn.disabled = false;
-                loginMfaBtn.textContent = '🔐 Sign in with MFA';
-            }
+            await startMfaLogin();
         });
     }
 
@@ -989,5 +1068,141 @@ function esc(text) {
     const d = document.createElement('div');
     d.textContent = String(text);
     return d.innerHTML;
+}
+
+// ── Salesforce ───────────────────────────────────
+
+function updateSalesforceDot(status) {
+    const dot = document.getElementById('dotSf');
+    const card = document.getElementById('sfStatus');
+    if (!dot || !card) return;
+    const indicator = card.querySelector('.status-indicator');
+    const detail = card.querySelector('.status-detail');
+    if (status.connected) {
+        dot.className = 'dot-item connected';
+        indicator.className = 'status-indicator connected';
+        indicator.textContent = '● Connected';
+        detail.textContent = status.orgId ? `Org: ${status.orgId}` : 'Ready';
+    } else {
+        dot.className = 'dot-item disconnected';
+        indicator.className = 'status-indicator disconnected';
+        indicator.textContent = '● Disconnected';
+        detail.textContent = status.error || 'Check SF_USERNAME / SF_PASSWORD / SF_TOKEN in .env';
+    }
+}
+
+async function loadSalesforceView() {
+    await refreshSfStatus();
+
+    const qBtn = document.getElementById('sfRunQueryBtn');
+    if (qBtn) qBtn.onclick = runSfQuery;
+
+    const loginBtn = document.getElementById('sfLoginBtn');
+    if (loginBtn) loginBtn.onclick = startSfLogin;
+
+    // Listen for the popup posting back after successful auth
+    window.removeEventListener('message', onSfAuthMessage);
+    window.addEventListener('message', onSfAuthMessage);
+}
+
+async function refreshSfStatus() {
+    const indicator = document.getElementById('sfConnIndicator');
+    const detail = document.getElementById('sfConnDetail');
+    if (indicator) { indicator.className = 'status-indicator loading'; indicator.textContent = 'Checking...'; }
+
+    try {
+        const status = await fetchJSON(`${API}/salesforce/status`);
+        if (indicator) {
+            indicator.className = `status-indicator ${status.connected ? 'connected' : 'disconnected'}`;
+            indicator.textContent = status.connected ? '● Connected' : '● Disconnected';
+        }
+        if (detail) {
+            detail.textContent = status.connected
+                ? `${status.displayName || status.username} · Org: ${status.orgId || '—'}`
+                : (status.error || 'Not signed in');
+        }
+        updateSalesforceDot(status);
+    } catch (err) {
+        if (indicator) { indicator.className = 'status-indicator disconnected'; indicator.textContent = '● Error'; }
+        if (detail) detail.textContent = err.message;
+    }
+}
+
+async function startSfLogin() {
+    const btn = document.getElementById('sfLoginBtn');
+    const hint = document.getElementById('sfAuthHint');
+    btn.disabled = true;
+    if (hint) { hint.textContent = 'Opening Salesforce login window…'; hint.style.display = 'block'; hint.style.color = 'var(--text-muted)'; }
+
+    try {
+        const data = await fetchJSON(`${API}/salesforce/login`);
+        if (!data.ok) throw new Error(data.error);
+
+        // Open Salesforce OAuth URL in a small popup — user does Azure MFA there
+        const popup = window.open(data.url, 'sf_oauth', 'width=600,height=700,left=200,top=100');
+        if (!popup) {
+            // Fallback: open in new tab if popups are blocked
+            window.open(data.url, '_blank');
+            if (hint) hint.textContent = 'Opened in new tab — complete Azure MFA login there, then return here.';
+        } else {
+            if (hint) hint.textContent = 'Complete Azure MFA in the popup, then return here.';
+        }
+    } catch (err) {
+        if (hint) { hint.textContent = '❌ ' + err.message; hint.style.color = 'var(--status-error)'; }
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function onSfAuthMessage(event) {
+    if (event.data?.type !== 'SF_AUTH_SUCCESS') return;
+    const hint = document.getElementById('sfAuthHint');
+    if (hint) { hint.textContent = '✅ Signed in! Refreshing status…'; hint.style.color = 'var(--status-ok)'; hint.style.display = 'block'; }
+    await refreshSfStatus();
+    setTimeout(() => { if (hint) hint.style.display = 'none'; }, 3000);
+}
+
+async function runSfQuery() {
+    const soql = document.getElementById('sfSoqlInput')?.value?.trim();
+    const resultEl = document.getElementById('sfQueryResult');
+    if (!soql) { resultEl.innerHTML = '<div class="empty-hint">Enter a SOQL query above.</div>'; return; }
+
+    const btn = document.getElementById('sfRunQueryBtn');
+    btn.disabled = true; btn.textContent = '⏳ Running...';
+    resultEl.innerHTML = '<div class="loading-small">Running query...</div>';
+
+    try {
+        const data = await fetchJSON(`${API}/salesforce/query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ soql }),
+        });
+
+        const records = data.records || [];
+        if (!records.length) {
+            resultEl.innerHTML = '<div class="empty-hint">No records returned.</div>';
+            return;
+        }
+
+        const cols = Object.keys(records[0]).filter(k => k !== 'attributes');
+        const thead = `<tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr>`;
+        const tbody = records.map(r =>
+            `<tr>${cols.map(c => `<td>${esc(r[c] ?? '')}</td>`).join('')}</tr>`
+        ).join('');
+
+        resultEl.innerHTML = `
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">${records.length} of ${data.totalSize} record(s)</p>
+            <div style="overflow-x:auto;">
+              <table class="schema-table">
+                <thead>${thead}</thead>
+                <tbody>${tbody}</tbody>
+              </table>
+            </div>
+        `;
+    } catch (err) {
+        resultEl.innerHTML = `<div class="empty-hint" style="color:var(--status-error);">Error: ${esc(err.message)}</div>`;
+    } finally {
+        btn.disabled = false; btn.textContent = '▶ Run Query';
+    }
 }
 

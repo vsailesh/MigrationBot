@@ -67,6 +67,57 @@ body::before {
     z-index: 0;
 }
 
+.auth-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background:
+        radial-gradient(circle at top, rgba(59, 130, 246, 0.12), transparent 18%),
+        rgba(7, 10, 22, 0.92);
+}
+
+.auth-gate.visible {
+    display: flex;
+}
+
+.auth-gate-card {
+    width: min(480px, 100%);
+    background: linear-gradient(180deg, rgba(19, 26, 46, 0.96), rgba(11, 15, 30, 0.98));
+    border: 1px solid var(--border-accent);
+    border-radius: 18px;
+    box-shadow: var(--shadow-hover);
+    padding: 40px 32px;
+    text-align: center;
+}
+
+.auth-gate-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.auth-gate h2 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.auth-gate-message,
+.auth-gate-hint {
+    color: var(--text-secondary);
+}
+
+.auth-gate-btn {
+    margin: 18px 0 10px;
+}
+
+.app-shell {
+    position: relative;
+    z-index: 1;
+}
+
 /* ── Header ───────────────────────────────────────── */
 .header {
     position: relative;
