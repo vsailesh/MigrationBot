@@ -923,6 +923,93 @@ router.post('/salesforce/query', async (req, res) => {
     }
 });
 
+// ════════════════════════════════════════════════════
+// File Ingestion Pipeline
+// ════════════════════════════════════════════════════
+
+import { pipeline } from '../pipeline/FileIngestionPipeline.js';
+
+/**
+ * GET /api/pipeline/status
+ * Returns current pipeline state, watch config, in-flight files, and last 10 runs.
+ */
+router.get('/pipeline/status', (_req, res) => {
+    res.json(pipeline.getStatus());
+});
+
+/**
+ * GET /api/pipeline/runs?limit=50
+ * Returns recent pipeline run history.
+ */
+router.get('/pipeline/runs', (req, res) => {
+    const limit = parseInt(req.query.limit || '50', 10);
+    res.json(pipeline.getRuns(limit));
+});
+
+/**
+ * POST /api/pipeline/scan
+ * Trigger an immediate SharePoint Delta poll without waiting for the next interval.
+ */
+router.post('/pipeline/scan', async (_req, res) => {
+    try {
+        const detected = await pipeline.scan();
+        res.json({ ok: true, filesDetected: detected });
+    } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
+/**
+ * POST /api/pipeline/trigger
+ * Manually push a specific SharePoint file item through the full pipeline.
+ * Body: { id, name, parentPath, projectName?, sfObject?, sfExternalId? }
+ */
+router.post('/pipeline/trigger', async (req, res) => {
+    const { id, name, parentPath, projectName, sfObject, sfExternalId } = req.body;
+    if (!id || !name) return res.status(400).json({ error: 'id and name are required' });
+    try {
+        const run = await pipeline.triggerFile({ id, name, parentPath, projectName, sfObject, sfExternalId });
+        res.json({ ok: true, run });
+    } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
+/**
+ * POST /api/pipeline/webhook
+ * Receives Microsoft Graph change notifications (for production deployments with a
+ * public HTTPS URL). Validates the subscription handshake and queues new-file events.
+ *
+ * To register: POST to Graph /subscriptions with changeType=created,updated,
+ * resource=drives/{driveId}/root/children, notificationUrl=<this endpoint>.
+ */
+router.post('/pipeline/webhook', async (req, res) => {
+    // Subscription validation handshake
+    if (req.query.validationToken) {
+        return res.status(200).type('text/plain').send(req.query.validationToken);
+    }
+
+    const notifications = req.body?.value || [];
+    res.status(202).end();  // acknowledge immediately per Graph spec
+
+    // Process notifications asynchronously after responding
+    setImmediate(async () => {
+        for (const n of notifications) {
+            if (!n.resourceData?.id) continue;
+            try {
+                await pipeline.triggerFile({
+                    id: n.resourceData.id,
+                    name: n.resourceData.name || 'unknown',
+                    parentPath: n.resourceData.parentReference?.path || '',
+                    projectName: process.env.WATCH_PROJECT_NAME,
+                });
+            } catch (err) {
+                console.error('[Webhook] Error handling notification:', err.message);
+            }
+        }
+    });
+});
+
 export default router;
 
 

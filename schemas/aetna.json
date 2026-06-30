@@ -430,5 +430,37 @@
         ]
       }
     }
+  },
+
+  "salesforce": {
+    "_comment": "Configure SF_TARGET_OBJECT and SF_EXTERNAL_ID_FIELD in .env to activate Salesforce fan-out. Field mappings below translate cleaned column names to Salesforce API field names. Any column not listed here passes through with its original name.",
+    "defaultObject": "Healthcare_Member__c",
+    "externalIdField": "Member_ID__c",
+    "tableMapping": {
+      "aetnaMemberTbl": {
+        "object": "Healthcare_Member__c",
+        "externalIdField": "Member_ID__c",
+        "fieldMappings": {
+          "MEMBER_ID":     "Member_ID__c",
+          "SRC_MEMBER_ID": "Source_Member_ID__c",
+          "MBI_NBR":       "MBI_Number__c",
+          "BIRTH_DT":      "Date_of_Birth__c",
+          "GENDER":        "Gender__c",
+          "MEMBER-NAME":   "Full_Name__c",
+          "MEMBER_MI":     "Middle_Initial__c",
+          "insert_date":   "Record_Date__c"
+        }
+      },
+      "aetnaContractTbl": {
+        "object": "Healthcare_Contract__c",
+        "externalIdField": "CMS_Contract_Number__c",
+        "fieldMappings": {
+          "CMS_CNTRCT_NBR":  "CMS_Contract_Number__c",
+          "CMS_CNTRCT_NAME": "Contract_Name__c",
+          "GROUP_NBR":       "Group_Number__c",
+          "ORIG_COVG_EFF_DT":"Original_Coverage_Date__c"
+        }
+      }
+    }
   }
 }

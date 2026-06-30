@@ -905,14 +905,20 @@ class DataCleaner {
     }
 
     /**
-     * Perform a monitoring scan (placeholder for SharePoint integration)
+     * Perform a monitoring scan — delegates to FileIngestionPipeline which handles
+     * SharePoint Delta polling, cleaning, Azure DB write, and Salesforce upsert.
      */
     async performMonitoringScan() {
         console.log('Performing cleaning monitoring scan...');
-        // This would integrate with SharePoint to check for new files
-        // For now, it's a placeholder
         this.lastCheckTime = new Date();
-        console.log('Monitoring scan completed');
+        try {
+            // Dynamic import avoids circular-dependency issues at module load time
+            const { pipeline } = await import('./pipeline/FileIngestionPipeline.js');
+            const detected = await pipeline.scan();
+            console.log(`Monitoring scan completed — ${detected} new file(s) detected`);
+        } catch (err) {
+            console.error('Monitoring scan error:', err.message);
+        }
     }
 
     /**
