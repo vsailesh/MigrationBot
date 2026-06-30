@@ -2,15 +2,21 @@
  * SharePointPoller
  * ================
  * Uses the Microsoft Graph API Delta query to detect new or modified files
- * in a configured SharePoint folder without full re-scans.
+ * across all project folders under Shared Documents.
  *
- * How Delta works:
- *  1. First call returns a snapshot of all items + a `@odata.deltaLink`
- *  2. Subsequent calls using that deltaLink return ONLY items changed since last call
- *  3. The deltaLink is persisted to .cache/sp-delta.json so restarts resume correctly
+ * Folder → project key resolution:
+ *   Shared Documents/
+ *     Aetna/       → aetna
+ *     CareFirst/   → carefirst
+ *     HCSC/        → hcsc  (skipped if no schema)
+ *     ...
  *
- * This avoids listing the entire folder on every poll cycle and is efficient
- * even for folders with thousands of files.
+ * The Delta link persists to .cache/sp-delta.json keyed by driveId so
+ * restarts resume exactly where they left off — only new/changed files
+ * are returned on every subsequent call.
+ *
+ * Known hard site/drive IDs are cached from the first resolve so we
+ * don't repeat the Graph discovery call on every poll.
  */
 
 import fs from 'fs';
@@ -22,32 +28,53 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_PATH = path.join(__dirname, '../../.cache/sp-delta.json');
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
+// Resolved from the DataAnalyticsAndInsights site (discovered in setup)
+const KNOWN_SITE_ID  = 'ac180a1d-b756-491d-8670-4357766a4a99';
+const KNOWN_DRIVE_ID = 'b!HQoYrFa3HUmGcENXdmpKmeuzxd7mR2REsp4ZlwucKQ1C7QHFBL3FQpz6cOD0JEJB';
+
 const SUPPORTED_EXTENSIONS = ['.xlsx', '.xls', '.csv'];
+
+// Folder name → project key normalisation.
+// Checked case-insensitively. If a folder name isn't listed here the poller
+// falls back to lower-casing the folder name (so "Aetna" → "aetna").
+// Add entries here for ambiguous names (e.g. "Care First" → "carefirst").
+const FOLDER_PROJECT_MAP = {
+    'aetna'          : 'aetna',
+    'carefirst'      : 'carefirst',
+    'care first'     : 'carefirst',
+    'cfmd'           : 'carefirst',
+    'hcsc'           : 'hcsc',
+    'hcsc- care gap files': 'hcsc',
+    'medstar'        : 'medstar',
+    'uhc dc'         : 'uhcdc',
+    'uhc md'         : 'uhcmd',
+    'uhc nc'         : 'uhcnc',
+};
 
 export class SharePointPoller {
     /**
-     * @param {string} watchFolderPath  SharePoint-relative path, e.g. "Shared Documents/SFTP-Incoming"
-     * @param {object} options
-     * @param {number} options.intervalMs          Poll interval in ms (default: 15 min)
-     * @param {string} options.projectName         Default project name to tag detected files with
-     * @param {function} options.onNewFile         Called for each new/modified file: async (fileItem) => {}
+     * @param {object}   options
+     * @param {number}   options.intervalMs   Poll interval in ms (default: 15 min)
+     * @param {string[]} options.allowProjects Whitelist of project keys to process;
+     *                                         if empty/absent, all folders with a schema are processed
+     * @param {function} options.hasSchema     (projectKey) → boolean — provided by FileIngestionPipeline
+     * @param {function} options.onNewFile     async (fileItem) → void
      */
-    constructor(watchFolderPath, options = {}) {
-        this.watchFolderPath = watchFolderPath;
-        this.intervalMs = options.intervalMs || parseInt(process.env.PIPELINE_POLL_INTERVAL_MS || '900000');
-        this.projectName = options.projectName || process.env.WATCH_PROJECT_NAME || 'unknown';
-        this.onNewFile = options.onNewFile || (() => {});
-        this._timer = null;
-        this._running = false;
-        this._driveId = null;
-        this._siteId = null;
+    constructor(options = {}) {
+        this.intervalMs    = options.intervalMs || parseInt(process.env.PIPELINE_POLL_INTERVAL_MS || '900000');
+        this.allowProjects = options.allowProjects || [];          // [] = allow all with schema
+        this.hasSchema     = options.hasSchema || (() => false);
+        this.onNewFile     = options.onNewFile || (() => {});
+        this._timer        = null;
+        this._running      = false;
+        this._siteId       = KNOWN_SITE_ID;
+        this._driveId      = KNOWN_DRIVE_ID;
     }
 
-    /** Start polling on the configured interval. */
     start() {
         if (this._running) return;
         this._running = true;
-        console.log(`[SharePointPoller] Starting watch on "${this.watchFolderPath}" every ${this.intervalMs / 60000} min`);
+        console.log(`[SharePointPoller] Watching Shared Documents every ${this.intervalMs / 60000} min`);
         this._scheduleNext();
     }
 
@@ -65,49 +92,80 @@ export class SharePointPoller {
         }, this.intervalMs);
     }
 
-    /** Single poll cycle — call directly to trigger an immediate check. */
+    /** Single poll cycle. Returns count of files dispatched to onNewFile. */
     async pollOnce() {
         const token = await this._getToken();
-        if (!this._siteId) await this._resolveSiteAndDrive(token);
-
         const { items, nextDeltaLink } = await this._fetchDelta(token);
         if (nextDeltaLink) this._saveDeltaLink(nextDeltaLink);
 
-        const newFiles = items.filter(item =>
-            item.file &&
-            !item.deleted &&
-            SUPPORTED_EXTENSIONS.some(ext => (item.name || '').toLowerCase().endsWith(ext)) &&
-            this._isUnderWatchFolder(item)
-        );
+        let dispatched = 0;
+        for (const item of items) {
+            if (!item.file || item.deleted) continue;
+            const ext = (item.name || '').split('.').pop().toLowerCase();
+            if (!SUPPORTED_EXTENSIONS.includes('.' + ext)) continue;
 
-        console.log(`[SharePointPoller] Poll complete — ${newFiles.length} new/changed file(s) detected`);
-        for (const file of newFiles) {
+            const projectKey = this._projectFromItem(item);
+            if (!projectKey) continue;                             // not under a project folder
+            if (!this._isAllowed(projectKey)) {
+                // No schema registered for this project yet — skip silently
+                continue;
+            }
+
+            dispatched++;
             try {
                 await this.onNewFile({
-                    id: file.id,
-                    name: file.name,
-                    size: file.size,
-                    lastModifiedDateTime: file.lastModifiedDateTime,
-                    webUrl: file.webUrl,
-                    parentPath: file.parentReference?.path || '',
-                    projectName: this.projectName,
+                    id:                   item.id,
+                    name:                 item.name,
+                    size:                 item.size,
+                    lastModifiedDateTime: item.lastModifiedDateTime,
+                    webUrl:               item.webUrl,
+                    parentPath:           item.parentReference?.path || '',
+                    projectKey,
                 });
             } catch (err) {
-                console.error(`[SharePointPoller] onNewFile error for "${file.name}":`, err.message);
+                console.error(`[SharePointPoller] onNewFile error for "${item.name}":`, err.message);
             }
         }
-        return newFiles.length;
+        console.log(`[SharePointPoller] Poll complete — ${dispatched} file(s) dispatched across all project folders`);
+        return dispatched;
     }
 
-    _isUnderWatchFolder(item) {
-        const parentPath = (item.parentReference?.path || '').toLowerCase();
-        const watchSuffix = this.watchFolderPath.toLowerCase().replace(/^\/+|\/+$/g, '');
-        return parentPath.includes(watchSuffix) || parentPath.includes('root:') ;
+    // ── Project detection ──────────────────────────────────────────────────────
+
+    /**
+     * Extract the top-level project folder name from a file's parentReference.path.
+     *
+     * Graph API parentReference.path for a file at:
+     *   Shared Documents/Aetna/2026/file.xlsx
+     * will be:
+     *   /drives/<driveId>/root:/Aetna/2026
+     *
+     * We grab the first path component after "root:/" → "Aetna" → normalise → "aetna"
+     */
+    _projectFromItem(item) {
+        const rawPath = item.parentReference?.path || '';
+        // Strip the /drives/.../root: prefix
+        const afterRoot = rawPath.replace(/^\/drives\/[^/]+\/root:\//, '');
+        if (!afterRoot) return null;                               // file is at the drive root — ignore
+
+        const topFolder = afterRoot.split('/')[0];
+        if (!topFolder) return null;
+
+        return FOLDER_PROJECT_MAP[topFolder.toLowerCase()] || topFolder.toLowerCase();
     }
+
+    _isAllowed(projectKey) {
+        if (this.allowProjects.length > 0) {
+            return this.allowProjects.includes(projectKey);
+        }
+        return this.hasSchema(projectKey);
+    }
+
+    // ── Delta fetch ────────────────────────────────────────────────────────────
 
     async _fetchDelta(token) {
-        const cached = this._loadDeltaLink();
-        let url = cached || await this._buildInitialDeltaUrl(token);
+        let url = this._loadDeltaLink()
+            || `${GRAPH_BASE}/sites/${this._siteId}/drives/${this._driveId}/root/delta`;
 
         const items = [];
         let nextDeltaLink = null;
@@ -116,45 +174,13 @@ export class SharePointPoller {
             const res = await this._graphGet(url, token);
             if (res.value) items.push(...res.value);
 
-            if (res['@odata.deltaLink']) {
-                nextDeltaLink = res['@odata.deltaLink'];
-                break;
-            }
+            if (res['@odata.deltaLink']) { nextDeltaLink = res['@odata.deltaLink']; break; }
             url = res['@odata.nextLink'] || null;
         }
         return { items, nextDeltaLink };
     }
 
-    async _buildInitialDeltaUrl(token) {
-        // Resolve the watch folder's item ID, then call delta on it
-        const folderEncoded = encodeURIComponent(this.watchFolderPath.replace(/^\//, ''));
-        try {
-            const folderItem = await this._graphGet(
-                `${GRAPH_BASE}/sites/${this._siteId}/drives/${this._driveId}/root:/${this.watchFolderPath}`,
-                token
-            );
-            return `${GRAPH_BASE}/sites/${this._siteId}/drives/${this._driveId}/items/${folderItem.id}/delta`;
-        } catch {
-            // Fallback: delta on root, filter by folder path client-side
-            return `${GRAPH_BASE}/sites/${this._siteId}/drives/${this._driveId}/root/delta`;
-        }
-    }
-
-    async _resolveSiteAndDrive(token) {
-        const siteUrl = (process.env.SP_SITE_URL || '').replace(/\/$/, '');
-        const match = siteUrl.match(/sharepoint\.com(\/sites\/[^/?#]+)/);
-        const sitePath = match ? match[1] : '/sites/root';
-
-        const site = await this._graphGet(`${GRAPH_BASE}/sites/hcdinternational.sharepoint.com:${sitePath}`, token);
-        this._siteId = site.id;
-
-        const drivesRes = await this._graphGet(`${GRAPH_BASE}/sites/${this._siteId}/drives`, token);
-        const defaultDrive = drivesRes.value?.find(d => d.name === 'Documents' || d.driveType === 'documentLibrary') || drivesRes.value?.[0];
-        this._driveId = defaultDrive?.id;
-
-        if (!this._driveId) throw new Error('[SharePointPoller] Could not resolve SharePoint drive ID');
-        console.log(`[SharePointPoller] Resolved siteId=${this._siteId}, driveId=${this._driveId}`);
-    }
+    // ── Auth & HTTP ────────────────────────────────────────────────────────────
 
     async _getToken() {
         const cred = new ClientSecretCredential(
@@ -168,14 +194,16 @@ export class SharePointPoller {
 
     async _graphGet(url, token) {
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
-        if (!res.ok) throw new Error(`Graph API error ${res.status} for ${url}: ${await res.text()}`);
+        if (!res.ok) throw new Error(`Graph API ${res.status} for ${url}: ${(await res.text()).slice(0, 200)}`);
         return res.json();
     }
+
+    // ── Delta link persistence ─────────────────────────────────────────────────
 
     _saveDeltaLink(link) {
         try {
             const data = this._readCache();
-            data[this.watchFolderPath] = { deltaLink: link, savedAt: new Date().toISOString() };
+            data[this._driveId] = { deltaLink: link, savedAt: new Date().toISOString() };
             fs.mkdirSync(path.dirname(CACHE_PATH), { recursive: true });
             fs.writeFileSync(CACHE_PATH, JSON.stringify(data, null, 2));
         } catch (e) { console.warn('[SharePointPoller] Could not save delta link:', e.message); }
@@ -184,7 +212,7 @@ export class SharePointPoller {
     _loadDeltaLink() {
         try {
             const data = this._readCache();
-            return data[this.watchFolderPath]?.deltaLink || null;
+            return data[this._driveId]?.deltaLink || null;
         } catch { return null; }
     }
 

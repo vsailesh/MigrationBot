@@ -51,22 +51,26 @@ function recordRun(entry) {
 
 export class FileIngestionPipeline {
     constructor(options = {}) {
-        this.watchFolder  = options.watchFolder  || process.env.WATCH_SP_FOLDER || 'Shared Documents/SFTP-Incoming';
-        this.projectName  = options.projectName  || process.env.WATCH_PROJECT_NAME || 'aetna';
-        this.outputMode   = options.outputMode   || process.env.PIPELINE_OUTPUT_MODE || 'normalized-json';
-        this._poller      = null;
-        this._processing  = new Set();  // in-flight file IDs (prevent duplicate concurrent runs)
+        this.outputMode  = options.outputMode || process.env.PIPELINE_OUTPUT_MODE || 'normalized-json';
+        this._poller     = null;
+        this._processing = new Set();   // in-flight file IDs (prevent duplicate concurrent runs)
     }
 
-    /** Begin watching the configured SharePoint folder. */
+    _pollerOptions() {
+        return {
+            onNewFile:     (fileItem) => this.processFile(fileItem),
+            hasSchema:     (key) => DataCleaner.hasSchema(key),
+            allowProjects: (process.env.WATCH_PROJECTS || '')
+                .split(',').map(s => s.trim()).filter(Boolean),
+        };
+    }
+
+    /** Begin watching all project folders under Shared Documents. */
     start() {
         if (this._poller) return;
-        this._poller = new SharePointPoller(this.watchFolder, {
-            projectName: this.projectName,
-            onNewFile: (fileItem) => this.processFile(fileItem),
-        });
+        this._poller = new SharePointPoller(this._pollerOptions());
         this._poller.start();
-        console.log(`[Pipeline] Started — watching "${this.watchFolder}" for project "${this.projectName}"`);
+        console.log('[Pipeline] Started — watching all project folders in Shared Documents');
     }
 
     stop() {
@@ -78,10 +82,7 @@ export class FileIngestionPipeline {
     /** Force an immediate poll cycle (used by /api/pipeline/scan). */
     async scan() {
         if (!this._poller) {
-            this._poller = new SharePointPoller(this.watchFolder, {
-                projectName: this.projectName,
-                onNewFile: (fileItem) => this.processFile(fileItem),
-            });
+            this._poller = new SharePointPoller(this._pollerOptions());
         }
         return this._poller.pollOnce();
     }
@@ -95,11 +96,13 @@ export class FileIngestionPipeline {
 
     async processFile(fileItem) {
         const runId = `run-${++_runSeq}-${Date.now()}`;
+        // projectKey comes from the folder name detected by SharePointPoller
+        const projectKey = fileItem.projectKey || fileItem.projectName || 'unknown';
         const run = {
             runId,
             fileId: fileItem.id,
             fileName: fileItem.name,
-            projectName: fileItem.projectName || this.projectName,
+            projectName: projectKey,
             startedAt: new Date().toISOString(),
             finishedAt: null,
             status: 'running',
@@ -131,8 +134,8 @@ export class FileIngestionPipeline {
             run.steps.download = `${buffer.length} bytes`;
 
             // Step 3: clean
-            console.log(`[Pipeline] Cleaning: ${fileItem.name} (mode=${this.outputMode})`);
-            const cleanResult = await this._cleanFile(buffer, fileItem);
+            console.log(`[Pipeline] Cleaning: ${fileItem.name} project=${projectKey} (mode=${this.outputMode})`);
+            const cleanResult = await this._cleanFile(buffer, fileItem, projectKey);
             run.steps.clean = {
                 rows: cleanResult.metadata?.rowCount,
                 newColumns: cleanResult.metadata?.newColumnsFound?.length,
@@ -141,11 +144,11 @@ export class FileIngestionPipeline {
 
             // Step 4: fan-out in parallel
             const groupedData = cleanResult.groupedData || {};
-            const schema = DataCleaner.schemaManager?.getSchema(fileItem.projectName || this.projectName);
+            const schema = DataCleaner.schemaManager?.getSchema(projectKey);
             const schemaColumns = schema?.columns || {};
 
             const [dbResult, sfResult] = await Promise.allSettled([
-                writeGroupedDataToAzureDb(groupedData, fileItem.projectName || this.projectName, schemaColumns),
+                writeGroupedDataToAzureDb(groupedData, projectKey, schemaColumns),
                 this._writeToSalesforce(groupedData, fileItem, schemaColumns),
             ]);
 
@@ -185,13 +188,21 @@ export class FileIngestionPipeline {
         return { buffer, siteId };
     }
 
-    async _cleanFile(buffer, fileItem) {
+    async _cleanFile(buffer, fileItem, projectKey) {
+        // Build the SharePoint path that DataCleaner.detectProjectFromPath() can parse.
+        // Graph API parentReference.path looks like:
+        //   /drives/<driveId>/root:/Aetna/2026
+        // Strip the prefix to get a human-readable relative path.
+        const humanPath = (fileItem.parentPath || '')
+            .replace(/^\/drives\/[^/]+\/root:\//, 'Shared Documents/')
+            .replace(/^Shared Documents\/Shared Documents\//, 'Shared Documents/');
+
         const fileInfoForCleaner = {
-            id: fileItem.id,
-            name: fileItem.name,
-            sharepointPath: fileItem.parentPath
-                ? `${fileItem.parentPath}/${fileItem.name}`.replace(/^.*root:/, 'Shared Documents')
-                : `Shared Documents/${fileItem.projectName || this.projectName}/${fileItem.name}`,
+            id:             fileItem.id,
+            name:           fileItem.name,
+            sharepointPath: humanPath
+                ? `${humanPath}/${fileItem.name}`
+                : `Shared Documents/${projectKey}/${fileItem.name}`,
         };
         return DataCleaner.processFile(fileInfoForCleaner, buffer, { outputMode: this.outputMode });
     }
@@ -275,10 +286,12 @@ export class FileIngestionPipeline {
     // ── Status ─────────────────────────────────────────────────────────────────
 
     getStatus() {
+        const allowProjects = (process.env.WATCH_PROJECTS || '')
+            .split(',').map(s => s.trim()).filter(Boolean);
         return {
             running: !!this._poller,
-            watchFolder: this.watchFolder,
-            projectName: this.projectName,
+            watchRoot: 'Shared Documents (all project subfolders)',
+            activeProjects: allowProjects.length ? allowProjects : '(all schemas)',
             outputMode: this.outputMode,
             inFlight: [...this._processing],
             recentRuns: _runs.slice(-10).reverse(),
